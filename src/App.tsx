@@ -6,6 +6,7 @@ import { Download, PanelLeft, Plus, Search } from "lucide-react";
 import { MotionConfig, motion } from "motion/react";
 import { lazy, Suspense, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppToaster, Button, cn, IconButton, Kbd, motionTokens, Spinner, TextField, TooltipProvider } from "@/components/ui";
 import { t, tr } from "@/lib/i18n";
 import { importPackage } from "@/lib/import";
@@ -362,7 +363,9 @@ function Workspace() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: m.quick, ease: m.easeOut }}
             >
-              <Screen route={route} />
+              <ErrorBoundary resetKey={routeKey(route)}>
+                <Screen route={route} />
+              </ErrorBoundary>
             </motion.div>
           </Suspense>
         </main>
@@ -430,7 +433,7 @@ export function App() {
   return (
     <MotionConfig reducedMotion="user">
       <TooltipProvider>
-        {status === "ready" ? <Workspace /> : <Boot />}
+        <ErrorBoundary resetKey={status}>{status === "ready" ? <Workspace /> : <Boot />}</ErrorBoundary>
         <ConfirmHost />
         <LifecycleHost />
         <ShortcutsSheet />
