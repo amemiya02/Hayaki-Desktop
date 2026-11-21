@@ -35,7 +35,7 @@ import { EditorToolbar, HIGHLIGHT_COLOURS, TEXT_COLOURS, type ColourKind } from 
 import { clozeNumbersIn, clozeSurround, isMathjaxKind, mathSurround, nextClozeNumber, type MathKind } from "./markup";
 import { mathChip, mathStored } from "./mathjax";
 import { isMediaPath, MEDIA_EXTENSIONS, mediaReference } from "./media-src";
-import { isClipboardBitmap } from "./paste";
+import { isClipboardBitmap, pastedBitmapName } from "./paste";
 import { MATH_INSERTED_EVENT } from "./RichTextInput";
 import { TagEditor, type TagEditorHandle } from "./TagEditor";
 
@@ -102,10 +102,10 @@ function fieldViews(notetype: Notetype): FieldConfigView[] {
   }));
 }
 
-function pastedName(file: File): string {
+async function pastedName(file: File, bytes: Uint8Array): Promise<string> {
   const ext = file.type.split("/")[1]?.replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "") || "bin";
   if (file.name && file.name !== "blob" && !isClipboardBitmap(file)) return file.name;
-  return `paste-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${ext}`;
+  return pastedBitmapName(bytes, ext);
 }
 
 export const FieldsEditor = forwardRef<FieldsEditorHandle, FieldsEditorProps>(function FieldsEditor(
@@ -289,7 +289,10 @@ export const FieldsEditor = forwardRef<FieldsEditorHandle, FieldsEditorProps>(fu
 
   const onFiles = (files: File[]) =>
     storeFiles(
-      () => files.map(async (file) => addMediaBytes(pastedName(file), new Uint8Array(await file.arrayBuffer()))),
+      () => files.map(async (file) => {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        return addMediaBytes(await pastedName(file, bytes), bytes);
+      }),
       "rich",
       files.map((f) => f.name),
     );

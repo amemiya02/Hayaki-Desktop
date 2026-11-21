@@ -52,3 +52,9 @@ export function useEditingPrefs(): EditingPrefs {
   const { data } = useQuery({ queryKey: ["preferences"], queryFn: () => core.getPreferences() });
   return { stripsFormatting: !!data?.editing?.pasteStripsFormatting, imagesAsPng: !!data?.editing?.pasteImagesAsPng };
 }
+
+/** `paste-<sha1 of bytes>.<ext>` as Anki names a pasted bitmap, so the same image pasted twice is one file. */
+export async function pastedBitmapName(bytes: Uint8Array, ext: string): Promise<string> {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-1", bytes as BufferSource));
+  return `paste-${[...digest].map((b) => b.toString(16).padStart(2, "0")).join("")}.${ext}`;
+}

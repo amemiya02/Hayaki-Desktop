@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { isClipboardBitmap, stripsFormatting } from "./paste";
+import { isClipboardBitmap, pastedBitmapName, stripsFormatting } from "./paste";
 
 describe("paste", () => {
   it("lets Shift invert the saved preference", () => {
@@ -18,5 +18,11 @@ describe("paste", () => {
     expect(isClipboardBitmap(new File([], "", { type: "image/png" }))).toBe(true);
     expect(isClipboardBitmap(new File([], "cat.png", { type: "image/png" }))).toBe(false);
     expect(isClipboardBitmap(new File([], "anim.gif", { type: "image/gif" }))).toBe(false);
+  });
+
+  it("names a pasted bitmap by the sha1 of its bytes", async () => {
+    const bytes = new TextEncoder().encode("abc");
+    expect(await pastedBitmapName(bytes, "png")).toBe("paste-a9993e364706816aba3e25717850c26c9cd0d89d.png");
+    expect(await pastedBitmapName(bytes, "png")).toBe(await pastedBitmapName(new Uint8Array(bytes), "png"));
   });
 });

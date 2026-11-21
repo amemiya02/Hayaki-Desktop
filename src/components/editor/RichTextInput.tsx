@@ -9,7 +9,7 @@
  * never in answer to its own typing, so the caret, the undo history and IME
  * composition are left alone. Nothing is emitted while a composition is open.
  */
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type CSSProperties } from "react";
 
 import { cn } from "@/components/ui";
 import { mediaUrl } from "@/lib/study/audio";
@@ -17,7 +17,7 @@ import { mediaUrl } from "@/lib/study/audio";
 import { insertHtml, rememberSelection } from "./dom";
 import { ImageHandle } from "./ImageHandle";
 import { displayToField, fieldToDisplay, normalizeEmpty } from "./media-src";
-import { displayToMath, mathToDisplay } from "./mathjax";
+import { copiedMath, displayToMath, mathToDisplay } from "./mathjax";
 import { MathjaxPopover } from "./MathjaxPopover";
 import { encodePastedImage, isClipboardBitmap, stripsFormatting, useEditingPrefs } from "./paste";
 import { sanitizeHtml, textToHtml } from "./sanitize";
@@ -99,6 +99,8 @@ export function RichTextInput({
   const shown = useRef<string | null>(null);
   const composing = useRef(false);
   const shiftPaste = useRef(false);
+  /** Chips inserted in this session; only these are removed when closed empty. */
+  const fresh = useRef(new WeakSet<HTMLElement>());
   const handlers = useRef({ onChange, value });
   handlers.current = { onChange, value };
   const prefs = useEditingPrefs();
@@ -144,10 +146,24 @@ export function RichTextInput({
       });
   };
 
+  /** Copy and cut keep a MathJax chip's `\\( \\)` form on the clipboard, as text and as HTML. */
+  const copyMath = (e: ClipboardEvent<HTMLDivElement>, cut: boolean) => {
+    const selection = document.getSelection();
+    if (!selection?.rangeCount || selection.isCollapsed) return;
+    const holder = document.createElement("div");
+    holder.append(selection.getRangeAt(0).cloneContents());
+    const copied = copiedMath(holder.innerHTML);
+    if (!copied) return;
+    e.preventDefault();
+    e.clipboardData.setData("text/plain", copied.text);
+    e.clipboardData.setData("text/html", copied.html);
+    if (cut) document.execCommand("delete");
+  };
+
   const closeChip = () => {
     const el = element.current;
     if (chip && el) {
-      if (chip.isConnected && !chip.dataset.mathjax) {
+      if (chip.isConnected && fresh.current.has(chip) && !chip.dataset.mathjax) {
         chip.remove();
         emit();
       }
@@ -167,7 +183,10 @@ export function RichTextInput({
   const openInsertedChip = () => {
     const inserted = element.current?.querySelector<HTMLElement>("[data-autofocus]");
     inserted?.removeAttribute("data-autofocus");
-    if (inserted) setChip(inserted);
+    if (inserted) {
+      fresh.current.add(inserted);
+      setChip(inserted);
+    }
   };
 
   useEffect(() => {
@@ -228,12 +247,19 @@ export function RichTextInput({
       }}
       onFocus={onFocus}
       onBlur={() => {
+        shiftPaste.current = false;
         if (element.current) rememberSelection(element.current);
         onBlur?.();
       }}
       onKeyDown={(e) => {
         shiftPaste.current = (e.ctrlKey || e.metaKey) && e.shiftKey && e.code === "KeyV";
       }}
+      // A paste fires during keydown; whatever is left after the key goes up belongs to no paste.
+      onKeyUp={() => {
+        shiftPaste.current = false;
+      }}
+      onCopy={(e) => copyMath(e, false)}
+      onCut={(e) => copyMath(e, true)}
       onPaste={(e) => {
         const data = e.clipboardData;
         const files = mediaFiles(data.files);
