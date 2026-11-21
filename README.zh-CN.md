@@ -14,6 +14,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/amemiya02/Hayaki-Desktop/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/amemiya02/Hayaki-Desktop"></a>
   <a href="LICENSE"><img alt="License: AGPL-3.0-or-later" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey">
   <img alt="Anki engine 26.09.4" src="https://img.shields.io/badge/Anki%20engine-26.09.4-2f6fb2">
@@ -76,6 +77,10 @@ Hayaki 用一套统一的设计系统，从零重写了 Anki 桌面版的界面�
 - **内置 AnkiConnect**：在设置中开启后，Yomitan、浏览器扩展和脚本就能添加笔记。只有本机程序可以连接，网页需要逐个授权。
 - **原生体验**：Windows 11 的 Mica 和 macOS 的毛玻璃效果，Mac 上显示 ⌘ 快捷键，支持缩放、全屏、命令面板（Ctrl+K / ⌘K）和快捷键一览（`?`）。
 - **简体中文、日语和英语**全面支持，Anki 自身翻译过的语言也都可以使用。
+
+## 下载
+
+在[最新版本](https://github.com/amemiya02/Hayaki-Desktop/releases/latest)中选择对应平台的安装包：Windows 10/11 用 `.exe` 或 `.msi`；macOS 用 `.dmg`，Apple 芯片选 `aarch64`，Intel 芯片选 `x64`。安装包尚未签名，首次打开的方法见版本说明。
 
 ## 从源码构建
 

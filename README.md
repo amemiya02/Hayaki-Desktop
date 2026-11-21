@@ -14,6 +14,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/amemiya02/Hayaki-Desktop/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/amemiya02/Hayaki-Desktop"></a>
   <a href="LICENSE"><img alt="License: AGPL-3.0-or-later" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey">
   <img alt="Anki engine 26.09.4" src="https://img.shields.io/badge/Anki%20engine-26.09.4-2f6fb2">
@@ -74,6 +75,10 @@ Hayaki rebuilds Anki Desktop's interface from scratch, in one design system, on 
 - **AnkiConnect, built in.** Turn it on in Settings, and Yomitan, browser extensions and scripts can add notes. Only programs on your computer can connect, and web pages must be allowed one by one.
 - **Feels native.** Mica on Windows 11, vibrancy on macOS, ⌘ shortcuts on the Mac, zoom, full screen, a command palette (Ctrl+K / ⌘K) and a shortcuts sheet (`?`).
 - **English, Simplified Chinese and Japanese** throughout, and every language Anki itself translates.
+
+## Download
+
+Get the installer for your platform from the [latest release](https://github.com/amemiya02/Hayaki-Desktop/releases/latest): `.exe` or `.msi` for Windows 10/11, and `.dmg` for macOS on Apple silicon (`aarch64`) or Intel (`x64`). The installers are not code-signed yet, so the release notes explain how to open them the first time.
 
 ## Build from source
 
