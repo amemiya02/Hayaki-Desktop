@@ -70,6 +70,7 @@ Hayaki rebuilds Anki Desktop's interface from scratch, in one design system, on 
 - **Collection tools:** Note Types and Card Templates with a live preview, Change Note Type, Filtered Decks, Custom Study, Image Occlusion, CSV, `.apkg` and `.colpkg` import and export, Check Database, Check Media and Empty Cards.
 - **Sync** with AnkiWeb or a self-hosted server, automatically on open and close, with media progress and a media log.
 - **Automatic backups** and restore from any backup.
+- **Plugins** in JavaScript, each in its own sandbox with the permissions you approve at install: commands, sidebar panels, review events and Card styling. See [docs/plugins.md](docs/plugins.md).
 - **AnkiConnect, built in.** Turn it on in Settings, and Yomitan, browser extensions and scripts can add notes. Only programs on your computer can connect, and web pages must be allowed one by one.
 - **Feels native.** Mica on Windows 11, vibrancy on macOS, ⌘ shortcuts on the Mac, zoom, full screen, a command palette (Ctrl+K / ⌘K) and a shortcuts sheet (`?`).
 - **English, Simplified Chinese and Japanese** throughout, and every language Anki itself translates.

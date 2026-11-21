@@ -210,6 +210,8 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
         <NavItem icon={<Layers />} label={t("nav.decks")} shortcut="D" active={route.name === "decks"} onClick={() => go({ name: "decks" })} />
         <NavItem icon={<Search />} label={t("nav.browse")} shortcut="B" active={route.name === "browse"} onClick={() => go({ name: "browse" })} />
         <NavItem icon={<BarChart3 />} label={t("nav.stats")} shortcut="T" active={route.name === "stats"} onClick={() => go({ name: "stats" })} />
+        {/* Above the Deck tree, which can run to hundreds of rows. */}
+        <PluginPanels route={route} />
 
         {regular.length > 0 && (
           <>
@@ -237,7 +239,6 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
             </ul>
           </>
         )}
-        <PluginPanels route={route} />
       </div>
 
       <div className="flex items-center gap-1 border-t border-line px-2.5 py-2">
