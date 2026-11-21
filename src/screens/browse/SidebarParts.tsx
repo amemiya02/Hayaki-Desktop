@@ -4,28 +4,30 @@
 /** The sidebar's building blocks: a collapsible section and a row that can rename, drag and take drops. */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useRef, type DragEvent, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 
 import { cn } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
 import type { ConfigKey_Bool } from "@/lib/anki/proto/anki/config_pb";
 import { tr } from "@/lib/i18n";
+import type { TargetState } from "@/lib/pointer-drag";
 
 import { CtxContent, CtxRoot, CtxTrigger } from "./menus";
 
-/** What a row needs to be a drop target; `over` draws the indicator. */
-export interface DropProps {
-  over: boolean;
-  onDragOver: (e: DragEvent) => void;
-  onDragLeave: (e: DragEvent) => void;
-  onDrop: (e: DragEvent) => void;
+/**
+ * How a row takes part in a pointer drag (`@/lib/pointer-drag`): it is a drop
+ * target under `key`, and a drag source when it has `handlers`.
+ */
+export interface Dnd {
+  /** The drop target attribute of this kind of drag. */
+  attribute: string;
+  key: string;
+  /** The kind's `useTarget`; read as `state` so it is not mistaken for a hook call site. */
+  state: (key: string) => TargetState;
+  handlers?: { onPointerDown: (e: PointerEvent<HTMLElement>) => void };
 }
 
-export interface DragProps {
-  dragging: boolean;
-  onDragStart: (e: DragEvent) => void;
-  onDragEnd: () => void;
-}
+const IDLE: TargetState = { dragging: false, over: false, valid: false, isSource: false };
 
 export interface RenameProps {
   editing: boolean;
@@ -36,6 +38,10 @@ export interface RenameProps {
 }
 
 const dropClass = "bg-accent-soft shadow-ring-inset";
+
+function dndAttrs(dnd: Dnd | undefined) {
+  return dnd ? { [dnd.attribute]: dnd.key } : undefined;
+}
 
 function useCollapsed(key: ConfigKey_Bool) {
   const client = useQueryClient();
@@ -56,7 +62,7 @@ export function Section({
   children,
   action,
   menu,
-  drop,
+  dnd,
 }: {
   label: string;
   icon: ReactNode;
@@ -64,15 +70,14 @@ export function Section({
   children: ReactNode;
   action?: ReactNode;
   menu?: ReactNode;
-  drop?: DropProps;
+  dnd?: Dnd;
 }) {
+  const drop = dnd ? dnd.state(dnd.key) : IDLE;
   const [collapsed, toggle] = useCollapsed(collapseKey);
   const header = (
     <div
-      className={cn("group flex h-7 items-center rounded-[6px] pr-1 transition-colors duration-[var(--dur-fast)]", drop?.over && dropClass)}
-      onDragOver={drop?.onDragOver}
-      onDragLeave={drop?.onDragLeave}
-      onDrop={drop?.onDrop}
+      {...dndAttrs(dnd)}
+      className={cn("group flex h-7 items-center rounded-[6px] pr-1 transition-colors duration-[var(--dur-fast)]", drop.valid && dropClass)}
     >
       <button
         data-sidebar-item
@@ -160,8 +165,7 @@ export function Item({
   menu,
   rename,
   onDelete,
-  drag,
-  drop,
+  dnd,
 }: {
   label: string;
   icon?: ReactNode;
@@ -175,27 +179,25 @@ export function Item({
   menu?: ReactNode;
   rename?: RenameProps;
   onDelete?: () => void;
-  drag?: DragProps;
-  drop?: DropProps;
+  dnd?: Dnd;
 }) {
+  const drop = dnd ? dnd.state(dnd.key) : IDLE;
   const row = (
     <div
-      draggable={!!drag && !rename?.editing}
-      onDragStart={drag?.onDragStart}
-      onDragEnd={drag?.onDragEnd}
-      onDragOver={drop?.onDragOver}
-      onDragLeave={drop?.onDragLeave}
-      onDrop={drop?.onDrop}
+      {...dndAttrs(dnd)}
+      {...(rename?.editing ? undefined : dnd?.handlers)}
       className={cn(
         "group flex h-[28px] items-center rounded-[7px] pr-1 text-control transition-colors duration-[var(--dur-fast)]",
         active ? "bg-accent-soft text-accent-ink" : "text-ink hover:bg-sidebar-hover",
-        drop?.over && dropClass,
-        drag?.dragging && "opacity-45",
+        drop.valid && dropClass,
+        drop.over && !drop.valid && "cursor-not-allowed",
+        drop.isSource && "opacity-45",
       )}
       style={{ paddingLeft: 4 + depth * 14 }}
     >
       {onToggle ? (
         <button
+          data-no-drag
           tabIndex={-1}
           aria-label={expanded ? tr("browsing-sidebar-collapse") : tr("browsing-sidebar-expand")}
           onClick={onToggle}

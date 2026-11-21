@@ -3,7 +3,7 @@
 
 /**
  * Find Duplicates, as `Collection.find_dupes` in Anki's `pylib`: Notes whose
- * chosen field has the same text (HTML stripped, media names kept) form a
+ * chosen field has the same text (HTML stripped, media names kept, trimmed) form a
  * group. An empty field never counts.
  */
 import * as core from "@/lib/anki/generated/core";
@@ -26,7 +26,9 @@ export interface FieldValue {
 export function groupDuplicates(values: FieldValue[]): DuplicateGroup[] {
   const seen = new Map<string, bigint[]>();
   const groups: DuplicateGroup[] = [];
-  for (const { noteId, value } of values) {
+  for (const { noteId, value: raw } of values) {
+    // Anki strips the HTML, then trims: a field of only spaces is empty.
+    const value = raw.trim();
     if (!value) continue;
     const ids = seen.get(value);
     if (!ids) {

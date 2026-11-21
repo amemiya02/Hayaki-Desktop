@@ -135,6 +135,8 @@ const WHILE_TYPING = new Set<ActionId>([
   "zoomReset",
 ]);
 
+const ZOOM = new Set<ActionId>(["zoomIn", "zoomOut", "zoomReset"]);
+
 export function BrowseScreen({ search }: { search?: string }) {
   const filtersOpen = useBrowseLayout((s) => s.filtersOpen);
   const setFiltersOpen = useBrowseLayout((s) => s.setFiltersOpen);
@@ -512,6 +514,11 @@ export function BrowseScreen({ search }: { search?: string }) {
       if (!id) return;
       const typing = isEditable(e.target);
       if (typing && !WHILE_TYPING.has(id)) return;
+      const target = e.target as HTMLElement | null;
+      // Ctrl+= and Ctrl+- are the editor's subscript and superscript.
+      if (target?.isContentEditable && ZOOM.has(id)) return;
+      // Home and End move within an open menu or list, not the table.
+      if ((id === "firstCard" || id === "lastCard") && target?.closest?.("[role=menu],[role=listbox],[role=dialog]")) return;
       if (id === "delete" && !(e.target as HTMLElement | null)?.closest?.("[role=grid]")) return;
       e.preventDefault();
       e.stopPropagation();

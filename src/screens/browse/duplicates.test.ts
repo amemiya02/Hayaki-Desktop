@@ -22,4 +22,9 @@ describe("groupDuplicates", () => {
   it("is case sensitive, like Anki", () => {
     expect(groupDuplicates([v(1, "Cat"), v(2, "cat")])).toEqual([]);
   });
+
+  it("trims the stripped value before grouping and before the empty check", () => {
+    expect(groupDuplicates([v(1, "cat "), v(2, " cat")])).toEqual([{ value: "cat", noteIds: [1n, 2n] }]);
+    expect(groupDuplicates([v(1, "  "), v(2, "\n")])).toEqual([]);
+  });
 });

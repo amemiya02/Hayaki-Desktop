@@ -1,6 +1,9 @@
+import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 
-import { canReparent, cleanName, parentOf, renameSaved } from "./sidebar-ops";
+import { TagTreeNodeSchema, type TagTreeNode } from "@/lib/anki/proto/anki/tags_pb";
+
+import { canReparent, cleanName, leafOf, parentOf, renameSaved, reparentedName, tagMoveTargets } from "./sidebar-ops";
 
 describe("canReparent", () => {
   it("allows moving into another branch or to the top", () => {
@@ -49,5 +52,49 @@ describe("renameSaved", () => {
   it("leaves an unchanged or unknown name alone", () => {
     expect(renameSaved(saved, "one", "one").saved).toBe(saved);
     expect(renameSaved(saved, "nope", "x").saved).toBe(saved);
+  });
+});
+
+describe("reparentedName", () => {
+  it("puts the leaf under the target", () => {
+    expect(reparentedName("a::b", "c")).toBe("c::b");
+    expect(reparentedName("x", "a::b")).toBe("a::b::x");
+  });
+
+  it("moves to the top level with just the leaf", () => {
+    expect(reparentedName("a::b::c", "")).toBe("c");
+  });
+
+  it("keeps the whole subtree path below the leaf", () => {
+    expect(leafOf("a::b")).toBe("b");
+    expect(leafOf("solo")).toBe("solo");
+  });
+});
+
+const node = (name: string, ...children: TagTreeNode[]) => create(TagTreeNodeSchema, { name, children });
+
+describe("tagMoveTargets", () => {
+  const tree = [node("a", node("b", node("c")), node("d")), node("e")];
+  const names = (source: string, query?: string) => tagMoveTargets(tree, source, query).map((t) => t.name);
+
+  it("offers the top level and every tag except itself, its descendants and its parent", () => {
+    expect(names("a::b")).toEqual(["", "a::d", "e"]);
+  });
+
+  it("lists in tree order with depths", () => {
+    expect(tagMoveTargets(tree, "e").map((t) => [t.name, t.depth])).toEqual([
+      ["a", 0],
+      ["a::b", 1],
+      ["a::b::c", 2],
+      ["a::d", 1],
+    ]);
+  });
+
+  it("never offers the top level to a top-level tag", () => {
+    expect(names("e")).not.toContain("");
+  });
+
+  it("narrows by a case-insensitive query and drops the top level", () => {
+    expect(names("e", "B")).toEqual(["a::b", "a::b::c"]);
   });
 });

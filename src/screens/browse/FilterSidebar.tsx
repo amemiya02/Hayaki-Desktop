@@ -8,7 +8,7 @@
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bookmark, Circle, Clock, Flag, FlagOff, Layers, Plus, Shapes, Tag, X } from "lucide-react";
-import { useState, type DragEvent, type MouseEvent, type ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { confirm } from "@/components/confirm";
@@ -23,13 +23,18 @@ import { cleanLabel, localeCompare, tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { leafName } from "@/lib/queries";
 import { tb } from "@/lib/strings/browse";
+import { td } from "@/lib/strings/decks";
+import { deckDnd } from "@/screens/decks/drag";
+import { MoveDeckDialog } from "@/screens/decks/MoveDeckDialog";
 
 import { FLAG_KEYS, readFlagLabels, readSavedSearches, writeSavedSearches } from "./config";
 import { RenameDialog, SaveSearchDialog } from "./dialogs";
 import { CtxItem, CtxSeparator } from "./menus";
 import { combineSearch, joinPath, nodes, parsable, type NodeInit } from "./search";
 import * as ops from "./sidebar-ops";
-import { Item, onTreeKey, Section, type DragProps, type DropProps } from "./SidebarParts";
+import { MoveTagDialog } from "./MoveTagDialog";
+import { Item, onTreeKey, Section, type Dnd } from "./SidebarParts";
+import { tagDrag } from "./tag-drag";
 
 interface Props {
   search: string;
@@ -38,7 +43,7 @@ interface Props {
   onTagNotes: (tag: string, remove: boolean) => void;
 }
 
-/** A Deck or tag being dragged. */
+/** A Deck or tag whose name is being edited with its parents. */
 type Dragged = { kind: "deck"; full: string; id: bigint } | { kind: "tag"; full: string };
 
 /** One tree entry's collapse state, for the Expand and Collapse menu items. */
@@ -56,8 +61,8 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
   /** The entry being renamed in place, by key. */
   const [editing, setEditing] = useState<string | null>(null);
   const [withParents, setWithParents] = useState<Dragged | null>(null);
-  const [drag, setDrag] = useState<Dragged | null>(null);
-  const [over, setOver] = useState<string | null>(null);
+  const [movingTag, setMovingTag] = useState<string | null>(null);
+  const [movingDeck, setMovingDeck] = useState<DeckTreeNode | null>(null);
 
   const { data: saved } = useQuery({ queryKey: ["browse", "saved"], queryFn: readSavedSearches });
   const { data: flagLabels } = useQuery({ queryKey: ["browse", "flagLabels"], queryFn: readFlagLabels });
@@ -79,26 +84,7 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
 
   const refresh = (...keys: string[]) => Promise.all(keys.map((key) => client.invalidateQueries({ queryKey: ["browse", key] })));
 
-  /** Runs a change, shows Anki's words with Undo, and reports a failure. */
-  const change = async (action: () => Promise<string | void>) => {
-    try {
-      const message = await action();
-      if (message) {
-        toast(message, {
-          action: {
-            label: tr("undo-undo"),
-            onClick: () =>
-              void core
-                .undo()
-                .then((out) => toast(tr("undo-action-undone", { action: out.operation })))
-                .catch(() => undefined),
-          },
-        });
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
-    }
-  };
+  const change = ops.change;
 
   const setDeckCollapsed = async (deckId: bigint, collapsed: boolean) => {
     await core.setDeckCollapsed({ deckId, collapsed, scope: SetDeckCollapsedRequest_Scope.BROWSER }, { quiet: true });
@@ -151,49 +137,13 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
 
   /* ------------------------------ Drag and drop ------------------------------ */
 
-  const dragProps = (target: Dragged): DragProps => ({
-    dragging: drag?.kind === target.kind && drag.full === target.full,
-    onDragStart: (e: DragEvent) => {
-      e.dataTransfer.setData("text/plain", target.full);
-      e.dataTransfer.effectAllowed = "move";
-      setDrag(target);
-    },
-    onDragEnd: () => {
-      setDrag(null);
-      setOver(null);
-    },
+  const getDeckRoot = () => client.getQueryData<DeckTreeNode>(["browse", "deckTree"]);
+  const tagDnd = (full: string, draggable: boolean): Dnd => ({
+    attribute: "data-tag-drop",
+    key: full,
+    state: tagDrag.useTarget,
+    handlers: draggable ? tagDrag.handlers(full, full) : undefined,
   });
-
-  /** A drop target that lights up only for a move the core accepts. */
-  const dropProps = (key: string, kind: Dragged["kind"], targetFull: string, perform: (source: Dragged) => void): DropProps => {
-    const accepts = (source: Dragged | null): source is Dragged => !!source && source.kind === kind && ops.canReparent(source.full, targetFull);
-    return {
-      over: over === key && accepts(drag),
-      onDragOver: (e) => {
-        if (!accepts(drag)) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        if (over !== key) setOver(key);
-      },
-      onDragLeave: (e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((current) => (current === key ? null : current));
-      },
-      onDrop: (e) => {
-        e.preventDefault();
-        const source = drag;
-        setOver(null);
-        setDrag(null);
-        if (accepts(source)) perform(source);
-      },
-    };
-  };
-
-  const dropOnDeck = (key: string, full: string, parentId: bigint) =>
-    dropProps(key, "deck", full, (source) => {
-      if (source.kind === "deck") void change(() => ops.reparentDecks([source.id], parentId));
-    });
-  const dropOnTag = (key: string, full: string) =>
-    dropProps(key, "tag", full, (source) => void change(() => ops.reparentTags([source.full], full)));
 
   /* ------------------------------ Saved searches ------------------------------ */
 
@@ -204,15 +154,16 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
     await refresh("saved");
   };
 
+  const confirmOverwrite = (name: string, action: string) =>
+    confirm({ title: tr("browsing-sidebar-saved-searches"), message: tr("browsing-confirm-saved-search-overwrite", { name }), confirm: action });
+
   const renameSaved = async (name: string, to: string) => {
     const newName = ops.cleanName(to);
     setEditing(null);
     if (!newName || newName === name) return;
     const current = await readSavedSearches();
     const result = ops.renameSaved(current, name, newName);
-    if (result.overwrites && !(await confirm({ title: tr("browsing-sidebar-saved-searches"), message: tr("browsing-confirm-saved-search-overwrite", { name: newName }), confirm: tr("actions-rename") }))) {
-      return;
-    }
+    if (result.overwrites && !(await confirmOverwrite(newName, tr("actions-rename")))) return;
     await writeSavedSearches(result.saved);
     await refresh("saved");
   };
@@ -263,8 +214,7 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
             onToggle={hasChildren ? () => toggleDeck(node) : undefined}
             rename={{ editing: editing === key, value: leaf, onStart: () => setEditing(key), onCommit: (v) => renameDeck(node, parent, v), onCancel: () => setEditing(null) }}
             onDelete={remove}
-            drag={dragProps(target)}
-            drop={dropOnDeck(key, full, node.deckId)}
+            dnd={deckDnd(node.deckId, { node, getRoot: getDeckRoot })}
             menu={
               <>
                 <CtxItem onSelect={remove} danger>
@@ -272,6 +222,7 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
                 </CtxItem>
                 <CtxItem onSelect={() => setEditing(key)}>{tr("actions-rename")}</CtxItem>
                 {parent && <CtxItem onSelect={() => setWithParents(target)}>{tr("actions-rename-with-parents")}</CtxItem>}
+                <CtxItem onSelect={() => setMovingDeck(node)}>{td("moveTo")}</CtxItem>
                 {hasChildren && (
                   <>
                     <CtxSeparator />
@@ -306,8 +257,7 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
             onToggle={hasChildren ? () => toggleTag(full, node) : undefined}
             rename={{ editing: editing === key, value: node.name, onStart: () => setEditing(key), onCommit: (v) => renameTag(full, parent, v), onCancel: () => setEditing(null) }}
             onDelete={remove}
-            drag={dragProps(target)}
-            drop={dropOnTag(key, full)}
+            dnd={tagDnd(full, true)}
             menu={
               <>
                 <CtxItem onSelect={() => onTagNotes(full, false)}>{tr("browsing-add-to-selected-notes")}</CtxItem>
@@ -318,6 +268,7 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
                 </CtxItem>
                 <CtxItem onSelect={() => setEditing(key)}>{tr("actions-rename")}</CtxItem>
                 {parent && <CtxItem onSelect={() => setWithParents(target)}>{tr("actions-rename-with-parents")}</CtxItem>}
+                <CtxItem onSelect={() => setMovingTag(full)}>{td("moveTo")}</CtxItem>
                 {hasChildren && (
                   <>
                     <CtxSeparator />
@@ -364,7 +315,7 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
   };
 
   return (
-    <nav aria-label={tr("browsing-sidebar")} className="h-full overflow-y-auto px-2 pb-4 pt-2" onKeyDown={onTreeKey}>
+    <nav data-drag-scroll aria-label={tr("browsing-sidebar")} className="h-full overflow-y-auto px-2 pb-4 pt-2" onKeyDown={onTreeKey}>
       <Section
         label={tr("browsing-sidebar-saved-searches")}
         icon={<Bookmark />}
@@ -461,7 +412,7 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
         label={tr("browsing-sidebar-decks")}
         icon={<Layers />}
         collapseKey={ConfigKey_Bool.COLLAPSE_DECKS}
-        drop={dropOnDeck("deck:", "", 0n)}
+        dnd={deckDnd(0n)}
       >
         {renderDecks(deckTree?.children ?? [], "", 0)}
       </Section>
@@ -492,7 +443,7 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
         ))}
       </Section>
 
-      <Section label={tr("browsing-sidebar-tags")} icon={<Tag />} collapseKey={ConfigKey_Bool.COLLAPSE_TAGS} drop={dropOnTag("tag:", "")}>
+      <Section label={tr("browsing-sidebar-tags")} icon={<Tag />} collapseKey={ConfigKey_Bool.COLLAPSE_TAGS} dnd={tagDnd("", false)}>
         {renderTags(tagTree?.children ?? [], "", 0)}
       </Section>
 
@@ -502,13 +453,16 @@ export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
           onSubmit={async (name) => {
             const current = await readSavedSearches();
             if (current[name] !== undefined && current[name] !== search) {
-              if (!window.confirm(tr("browsing-confirm-saved-search-overwrite", { name }))) return;
+              if (!(await confirmOverwrite(name, tr("actions-save")))) return;
             }
             await writeSavedSearches({ ...current, [name]: search });
             await refresh("saved");
           }}
         />
       )}
+
+      <MoveTagDialog tag={movingTag} tree={tagTree?.children ?? []} onClose={() => setMovingTag(null)} />
+      <MoveDeckDialog deck={movingDeck} root={deckTree} onClose={() => setMovingDeck(null)} />
 
       {withParents && (
         <RenameDialog
