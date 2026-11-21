@@ -24,19 +24,22 @@ export interface SyncAccount {
 
 export type FullSyncChoice = "upload" | "download" | "cancel";
 
+export type SyncResult = "done" | "media-failed" | "media-aborted" | "cancelled" | "error";
+
 type Phase = "idle" | "syncing" | "media";
 
 interface SyncState {
   phase: Phase;
   account: SyncAccount | null;
   loaded: boolean;
-  progress: string;
+  progress: string[];
   lastError: string | null;
   lastSynced: number | null;
   load(): Promise<void>;
   signIn(username: string, password: string, endpoint: string | null): Promise<void>;
   signOut(): Promise<void>;
-  sync(askFullSync: (required: "either" | "upload" | "download") => Promise<FullSyncChoice>): Promise<"done" | "cancelled" | "error">;
+  sync(askFullSync: (required: "either" | "upload" | "download") => Promise<FullSyncChoice>): Promise<SyncResult>;
+  abortMedia(): void;
 }
 
 const getAccount = () => invoke<SyncAccount | null>("sync_account_get");
@@ -46,18 +49,17 @@ function auth(account: SyncAccount) {
   return { hkey: account.hkey, endpoint: account.currentEndpoint ?? account.endpoint ?? undefined };
 }
 
-function describeProgress(p: Awaited<ReturnType<typeof core.latestProgress>>): string {
+/** The core's progress as already-translated parts, shown side by side. */
+function describeProgress(p: Awaited<ReturnType<typeof core.latestProgress>>): string[] {
   switch (p.value.case) {
     case "normalSync":
-      return [p.value.value.stage, p.value.value.added, p.value.value.removed].filter(Boolean).join(" · ");
+      return [p.value.value.stage, p.value.value.added, p.value.value.removed].filter(Boolean);
     case "fullSync": {
       const { transferred, total } = p.value.value;
-      return total ? `${Math.round((transferred / total) * 100)}%` : "";
+      return total ? [`${Math.round((transferred / total) * 100)}%`] : [];
     }
-    case "mediaSync":
-      return [p.value.value.checked, p.value.value.added, p.value.value.removed].filter(Boolean).join(" · ");
     default:
-      return "";
+      return [];
   }
 }
 
@@ -77,7 +79,7 @@ export const useSync = create<SyncState>((set, get) => {
   function stopPolling() {
     if (poller) clearInterval(poller);
     poller = null;
-    set({ progress: "" });
+    set({ progress: [] });
   }
 
   async function rememberEndpoint(newEndpoint: string | undefined) {
@@ -89,12 +91,24 @@ export const useSync = create<SyncState>((set, get) => {
     }
   }
 
-  async function syncMedia(account: SyncAccount) {
-    set({ phase: "media" });
+  /** The core runs media sync in the background; poll its status until it stops. */
+  async function syncMedia(account: SyncAccount): Promise<"done" | "media-failed" | "media-aborted"> {
+    set({ phase: "media", progress: [] });
     try {
       await core.syncMedia(auth(account));
+      for (;;) {
+        const status = await core.mediaSyncStatus();
+        if (status.progress) {
+          const { added, removed, checked } = status.progress;
+          set({ progress: [added, removed, checked].filter(Boolean) });
+        }
+        if (!status.active) return "done";
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
     } catch (error) {
+      if (error instanceof CoreError && error.backendError.kind === BackendError_Kind.INTERRUPTED) return "media-aborted";
       set({ lastError: error instanceof Error ? error.message : String(error) });
+      return "media-failed";
     }
   }
 
@@ -102,7 +116,7 @@ export const useSync = create<SyncState>((set, get) => {
     phase: "idle",
     account: null,
     loaded: false,
-    progress: "",
+    progress: [],
     lastError: null,
     lastSynced: null,
 
@@ -152,8 +166,8 @@ export const useSync = create<SyncState>((set, get) => {
         }
         resetQueries();
         set({ lastSynced: Date.now() });
-        await syncMedia(get().account!);
-        return "done";
+        stopPolling();
+        return await syncMedia(get().account!);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         set({ lastError: message });
@@ -166,6 +180,10 @@ export const useSync = create<SyncState>((set, get) => {
         stopPolling();
         set({ phase: "idle" });
       }
+    },
+
+    abortMedia() {
+      if (get().phase === "media") void core.abortMediaSync();
     },
   };
 });

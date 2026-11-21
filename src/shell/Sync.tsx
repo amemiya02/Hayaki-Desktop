@@ -37,12 +37,34 @@ export function useSyncAction() {
       return;
     }
     const id = toast.loading(tr("sync-syncing"));
-    const result = await sync(askFullSync);
+    const unsubscribe = useSync.subscribe((s) => {
+      if (s.phase === "idle") return;
+      const media = s.phase === "media";
+      toast.loading(media ? t("sync.media") : tr("sync-syncing"), {
+        id,
+        description: s.progress.length ? <ProgressParts parts={s.progress} /> : media ? tr("sync-media-starting") : undefined,
+        action: media
+          ? {
+              label: tr("sync-abort-button"),
+              onClick: (event) => {
+                event.preventDefault();
+                useSync.getState().abortMedia();
+              },
+            }
+          : undefined,
+      });
+    });
+    const result = await sync(askFullSync).finally(unsubscribe);
     const state = useSync.getState();
-    if (result === "done") toast.success(tr("sync-collection-complete"), { id });
+    const clear = { action: undefined };
+    if (result === "done") toast.success(tr("sync-collection-complete"), { ...clear, id, description: tr("sync-media-complete") });
+    else if (result === "media-aborted")
+      toast.success(tr("sync-collection-complete"), { ...clear, id, description: tr("sync-media-aborted") });
+    else if (result === "media-failed")
+      toast.warning(tr("sync-media-failed"), { ...clear, id, description: state.lastError ?? undefined });
     else if (result === "cancelled") toast.dismiss(id);
     else {
-      toast.error(t("sync.failed"), { id, description: state.lastError ?? undefined });
+      toast.error(t("sync.failed"), { ...clear, id, description: state.lastError ?? undefined });
       if (!state.account) setSigningIn(true);
     }
   }, [sync, askFullSync]);
@@ -108,6 +130,19 @@ export function useSyncAction() {
   );
 
   return { run, dialogs, syncing: phase !== "idle", account };
+}
+
+/** Each part stays on one line; lines break only between parts. */
+function ProgressParts({ parts }: { parts: string[] }) {
+  return (
+    <span className="flex flex-wrap gap-x-3">
+      {parts.map((part, i) => (
+        <span key={i} className="whitespace-nowrap">
+          {part}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function SignInDialog({ open, onClose, onSignedIn }: { open: boolean; onClose: () => void; onSignedIn: () => void }) {

@@ -516,22 +516,24 @@ export function AppToaster() {
     <Toaster
       position="bottom-center"
       gap={8}
+      // Sonner centres its loader with position:absolute, so the icon slot is `relative`.
+      icons={{ loading: <Spinner className="text-accent" /> }}
       toastOptions={{
         unstyled: true,
         classNames: {
           toast:
-            "group flex w-[var(--width)] items-center gap-3 rounded-[10px] border border-line bg-raised px-4 py-3 text-control text-ink shadow-pop",
+            "group flex w-[var(--width)] items-start gap-3 rounded-[10px] border border-line bg-raised px-4 py-3 text-control text-ink shadow-pop",
           content: "flex min-w-0 flex-1 flex-col gap-0.5",
           title: "font-medium text-ink",
-          description: "text-caption text-ink-2",
-          icon: "flex size-4 shrink-0 items-center justify-center text-ink-2 [&_svg]:size-4",
+          description: "text-caption tabular-nums text-ink-2",
+          icon: "relative flex h-[1lh] w-4 shrink-0 items-center justify-center text-ink-2 [&_svg]:size-4",
           success: "[&_[data-icon]]:text-due",
           error: "[&_[data-icon]]:text-danger",
           warning: "[&_[data-icon]]:text-hard",
           actionButton:
-            "h-7 shrink-0 rounded-[7px] px-2.5 text-control font-medium text-accent-ink transition-colors duration-[var(--dur-fast)] hover:bg-accent-soft",
+            "h-7 shrink-0 self-center rounded-[7px] px-2.5 text-control font-medium text-accent-ink transition-colors duration-[var(--dur-fast)] hover:bg-accent-soft",
           cancelButton:
-            "h-7 shrink-0 rounded-[7px] px-2.5 text-control font-medium text-ink-2 transition-colors duration-[var(--dur-fast)] hover:bg-sidebar-hover",
+            "h-7 shrink-0 self-center rounded-[7px] px-2.5 text-control font-medium text-ink-2 transition-colors duration-[var(--dur-fast)] hover:bg-sidebar-hover",
         },
       }}
     />
