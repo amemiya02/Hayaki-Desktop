@@ -66,7 +66,7 @@ export function DeckDescriptionDialog({ deckId, onClose }: { deckId: bigint | nu
         <>
           <Button onClick={onClose}>{tr("actions-cancel")}</Button>
           <Button variant="primary" disabled={!loaded || busy} onClick={() => void save()}>
-            {busy && <Spinner />}
+            {busy && <Spinner className="text-on-accent" />}
             {t("common.save")}
           </Button>
         </>
@@ -85,13 +85,6 @@ export function DeckDescriptionDialog({ deckId, onClose }: { deckId: bigint | nu
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          <label className="flex items-start gap-3" title={tr("deck-config-description-new-handling-hint")}>
-            <Switch checked={markdown} onChange={setMarkdown} label={tr("deck-config-description-new-handling2")} />
-            <span className="min-w-0 text-control text-ink">
-              {tr("deck-config-description-new-handling2")}
-              <span className="mt-0.5 block text-caption text-ink-3">{tr("deck-config-description-new-handling-hint")}</span>
-            </span>
-          </label>
           <textarea
             data-autofocus
             value={text}
@@ -100,8 +93,15 @@ export function DeckDescriptionDialog({ deckId, onClose }: { deckId: bigint | nu
             placeholder={td("descriptionPlaceholder")}
             spellCheck
             rows={9}
-            className={cn(fieldClass, "selectable h-auto min-h-[180px] resize-y py-2 font-mono leading-relaxed")}
+            className={cn(fieldClass, "selectable h-auto min-h-[180px] resize-y py-2 leading-relaxed")}
           />
+          <label className="flex items-center gap-3 rounded-[10px] bg-surface-2 px-3 py-2.5" title={tr("deck-config-description-new-handling-hint")}>
+            <span className="min-w-0 flex-1 text-control text-ink">
+              {tr("deck-config-description-new-handling2")}
+              <span className="mt-0.5 block text-caption text-ink-3">{tr("deck-config-description-new-handling-hint")}</span>
+            </span>
+            <Switch checked={markdown} onChange={setMarkdown} label={tr("deck-config-description-new-handling2")} />
+          </label>
         </div>
       )}
     </Dialog>

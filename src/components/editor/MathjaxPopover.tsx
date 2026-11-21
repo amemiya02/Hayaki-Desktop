@@ -77,7 +77,7 @@ export function MathjaxPopover({ chip, onChange, onRemove, onClose }: MathjaxPop
           }}
           onCloseAutoFocus={(e) => e.preventDefault()}
           aria-label={te("mathSource")}
-          className="z-50 w-[340px] rounded-[12px] border border-line bg-raised p-3 shadow-pop data-[state=open]:animate-[pop-in_120ms_var(--ease-out)]"
+          className="z-50 w-[340px] rounded-[10px] border border-line bg-raised p-3 shadow-pop data-[state=open]:animate-pop-in"
         >
           <textarea
             value={source}

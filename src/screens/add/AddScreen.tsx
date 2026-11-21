@@ -27,9 +27,11 @@ import type { Note } from "@/lib/anki/proto/anki/notes_pb";
 import { NotetypeSchema, type Notetype } from "@/lib/anki/proto/anki/notetypes_pb";
 import { localeCompare, t, tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
+import { displayChord } from "@/shell/shortcuts";
 import { te } from "@/lib/strings/editor";
 
 import { useAddHistory } from "./history";
+import { guardUnsavedAdd } from "./leave";
 import { takeAddPrefill, type AddPrefill } from "./prefill";
 
 const ORIGIN = "add";
@@ -101,7 +103,7 @@ export function AddScreen() {
   const [adding, setAdding] = useState(false);
   const [triedAdd, setTriedAdd] = useState(false);
   const [confirmCloze, setConfirmCloze] = useState<Note | null>(null);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [discard, setDiscard] = useState<(() => void) | null>(null);
   const [chooser, setChooser] = useState<"notetype" | "deck" | null>(null);
   const [panel, setPanelState] = useState(loadPanel);
   const [wide, setWide] = useState(true);
@@ -271,10 +273,15 @@ export function AddScreen() {
     }
   }, [adding, commitAdd]);
 
-  const close = useCallback(() => {
-    if (hasContent(latest.current.fields, latest.current.sticky)) setConfirmDiscard(true);
-    else back();
-  }, [back]);
+  // Typed or prefilled content asks before any route away; Add and Discard both
+  // empty it, which removes the guard.
+  const dirty = hasContent(fields, sticky);
+  useEffect(() => {
+    if (!dirty) return;
+    return guardUnsavedAdd((proceed) => setDiscard(() => proceed));
+  }, [dirty]);
+
+  const close = back;
 
   // Anki's Add shortcuts.
   useEffect(() => {
@@ -379,7 +386,7 @@ export function AddScreen() {
         <div className="flex shrink-0 flex-wrap items-center gap-2 px-5 pb-2.5 pt-3.5">
           <Chooser
             label={tr("notetypes-type")}
-            shortcut="Ctrl+N"
+            shortcut={displayChord("Ctrl+N")}
             items={notetypeItems}
             value={notetypeId}
             onSelect={(id) => void chooseNotetype(id)}
@@ -389,7 +396,7 @@ export function AddScreen() {
           />
           <Chooser
             label={tr("decks-deck")}
-            shortcut="Ctrl+D"
+            shortcut={displayChord("Ctrl+D")}
             items={deckItems}
             value={deckId}
             onSelect={setDeckId}
@@ -467,17 +474,17 @@ export function AddScreen() {
 
         {!isImageOcclusion(notetype) && (
           <footer className="flex shrink-0 items-center gap-3 border-t border-line px-5 py-3">
-            <p className="hidden min-w-0 truncate text-caption text-ink-3 sm:block">{tr("editing-jump-to-tags-with-ctrlandshiftandt")}</p>
+            <p className="hidden min-w-0 truncate text-caption text-ink-3 sm:block">{tr("editing-jump-to-tags-with-ctrlandshiftandt").replace("Ctrl+Shift+T", displayChord("Ctrl+Shift+T"))}</p>
             <Button
               variant="primary"
               className="ms-auto"
               disabled={!template || adding}
               onClick={() => void add()}
-              title={tr("adding-add-shortcut-ctrlandenter")}
+              title={tr("adding-add-shortcut-ctrlandenter").replace("Ctrl+Enter", displayChord("Ctrl+Enter"))}
             >
               {adding && <Spinner className="text-on-accent" />}
               {tr("actions-add")}
-              <Kbd className={onAccentKbd}>Ctrl+Enter</Kbd>
+              <Kbd className={onAccentKbd}>{displayChord("Ctrl+Enter")}</Kbd>
             </Button>
           </footer>
         )}
@@ -508,7 +515,7 @@ export function AddScreen() {
               options={[
                 { value: "question", label: te("question") },
                 { value: "answer", label: te("answer") },
-                { value: "history", label: tr("adding-history"), title: "Ctrl+H" },
+                { value: "history", label: tr("adding-history"), title: displayChord("Ctrl+H") },
               ]}
             />
           </div>
@@ -548,19 +555,20 @@ export function AddScreen() {
       />
 
       <Dialog
-        open={confirmDiscard}
-        onOpenChange={setConfirmDiscard}
+        open={discard !== null}
+        onOpenChange={(open) => !open && setDiscard(null)}
         title={tr("adding-discard-current-input")}
         footer={
           <>
-            <Button autoFocus data-autofocus onClick={() => setConfirmDiscard(false)}>
+            <Button autoFocus data-autofocus onClick={() => setDiscard(null)}>
               {tr("adding-keep-editing")}
             </Button>
             <Button
               variant="danger"
               onClick={() => {
-                setConfirmDiscard(false);
-                back();
+                const proceed = discard;
+                setDiscard(null);
+                proceed?.();
               }}
             >
               {tr("actions-discard")}

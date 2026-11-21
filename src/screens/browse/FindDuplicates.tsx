@@ -114,18 +114,19 @@ export function FindDuplicatesDialog({ onClose, onSearch }: { onClose: () => voi
         </div>
         <div>
           <FieldLabel htmlFor="browse-dupes-filter">{tr("browsing-optional-filter")}</FieldLabel>
-          <TextField id="browse-dupes-filter" value={filter} spellCheck={false} onChange={(e) => setFilter(e.target.value)} />
+          <TextField id="browse-dupes-filter" value={filter} placeholder="deck:current" spellCheck={false} onChange={(e) => setFilter(e.target.value)} />
         </div>
         {/* Enter in either control searches. */}
         <button type="submit" hidden />
       </form>
 
-      <div className="mt-3 min-h-[160px]" aria-live="polite">
+      <div className="mt-3" aria-live="polite">
         {error && (
           <p role="alert" className="selectable text-control text-danger">
             {error}
           </p>
         )}
+        {!groups && !searching && !error && <p className="text-control text-ink-3">{tb("duplicatesHint")}</p>}
         {searching && progress && (
           <p className="tabular flex items-center gap-2 text-control text-ink-2">
             <Spinner />
@@ -146,7 +147,7 @@ export function FindDuplicatesDialog({ onClose, onSearch }: { onClose: () => voi
                   <li key={g.value}>
                     <button
                       onClick={() => open(g.noteIds)}
-                      className="flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-left text-control text-ink outline-none hover:bg-accent-soft focus-visible:shadow-ring-inset"
+                      className="flex h-8 w-full items-center gap-2 rounded-[6px] px-2 text-start text-control text-ink outline-none hover:bg-accent-soft focus-visible:shadow-ring-inset"
                     >
                       <span className="tabular shrink-0 text-ink-3">{tr("browsing-note-count", { count: g.noteIds.length })}</span>
                       <span className="min-w-0 flex-1 truncate">{g.value}</span>

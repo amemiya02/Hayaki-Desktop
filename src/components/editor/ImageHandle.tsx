@@ -162,7 +162,7 @@ export function ImageHandle({ image, onChange, onClose }: ImageHandleProps) {
               className={`pointer-events-auto absolute size-3 rounded-[3px] border border-raised bg-accent ${className}`}
             />
           ))}
-        <span className="absolute start-1 bottom-1 max-w-[calc(100%-8px)] truncate rounded-[5px] bg-raised/90 px-1.5 py-0.5 text-micro text-ink-2 shadow-thumb">
+        <span className="absolute start-1 bottom-1 max-w-[calc(100%-8px)] truncate rounded-[5px] border border-line bg-raised/90 px-1.5 py-0.5 text-micro text-ink-2">
           {m.shrunk && m.shrinkable
             ? `(${tr("editing-double-click-to-expand")})`
             : `${size(m.intended)}${m.resized ? ` (${te("originalSize", { size: size({ width: image.naturalWidth, height: image.naturalHeight }) })})` : ""}`}
@@ -171,7 +171,7 @@ export function ImageHandle({ image, onChange, onClose }: ImageHandleProps) {
       <div
         role="toolbar"
         aria-label={te("imageSize")}
-        className="pointer-events-auto absolute flex gap-0.5 rounded-[9px] border border-line bg-raised p-0.5 shadow-pop"
+        className="pointer-events-auto absolute flex gap-0.5 rounded-[10px] border border-line bg-raised p-0.5 shadow-pop"
         style={{ left: Math.max(8, m.left), top: toolbarBelow ? m.top + m.height + 8 : m.top - 38 }}
       >
         <Tooltip content={`${tr("editing-actual-size")} (${tr("editing-double-click-image")})`}>

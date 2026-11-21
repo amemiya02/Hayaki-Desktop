@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { Button, Dialog, Kbd, Spinner } from "@/components/ui";
+import { Button, cn, Dialog, Kbd, Spinner } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
 import { CardAnswer_Rating } from "@/lib/anki/proto/anki/scheduler_pb";
 import { tr } from "@/lib/i18n";
@@ -14,24 +14,24 @@ import { tb } from "@/lib/strings/browse";
 import { errorText } from "./dialogs";
 
 const GRADES = [
-  { rating: CardAnswer_Rating.AGAIN, label: "studying-again", key: "1" },
-  { rating: CardAnswer_Rating.HARD, label: "studying-hard", key: "2" },
-  { rating: CardAnswer_Rating.GOOD, label: "studying-good", key: "3" },
-  { rating: CardAnswer_Rating.EASY, label: "studying-easy", key: "4" },
+  { rating: CardAnswer_Rating.AGAIN, label: "studying-again", key: "1", color: "text-again" },
+  { rating: CardAnswer_Rating.HARD, label: "studying-hard", key: "2", color: "text-hard" },
+  { rating: CardAnswer_Rating.GOOD, label: "studying-good", key: "3", color: "text-good" },
+  { rating: CardAnswer_Rating.EASY, label: "studying-easy", key: "4", color: "text-easy" },
 ] as const;
 
 export function GradeNowDialog({ cardIds, onClose }: { cardIds: bigint[]; onClose: () => void }) {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<CardAnswer_Rating | null>(null);
 
   const grade = async (rating: CardAnswer_Rating) => {
-    if (busy) return;
-    setBusy(true);
+    if (busy !== null) return;
+    setBusy(rating);
     try {
       await core.gradeNow({ cardIds, rating });
       onClose();
     } catch (error) {
       toast.error(errorText(error));
-      setBusy(false);
+      setBusy(null);
     }
   };
 
@@ -59,8 +59,8 @@ export function GradeNowDialog({ cardIds, onClose }: { cardIds: bigint[]; onClos
     >
       <div className="grid grid-cols-4 gap-2 py-1">
         {GRADES.map((g) => (
-          <Button key={g.key} disabled={busy} onClick={() => void grade(g.rating)} title={tr("actions-shortcut-key", { val: g.key })} className="h-14 flex-col gap-1">
-            {busy ? <Spinner /> : <span>{tr(g.label)}</span>}
+          <Button key={g.key} disabled={busy !== null} onClick={() => void grade(g.rating)} title={tr("actions-shortcut-key", { val: g.key })} className="h-14 flex-col gap-1">
+            {busy === g.rating ? <Spinner /> : <span className={cn("text-body font-semibold", g.color)}>{tr(g.label)}</span>}
             <Kbd>{g.key}</Kbd>
           </Button>
         ))}
