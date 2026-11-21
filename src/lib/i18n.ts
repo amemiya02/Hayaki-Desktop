@@ -129,3 +129,7 @@ export function localizedDate(date: Date, options?: Intl.DateTimeFormatOptions):
 export function localeCompare(a: string, b: string): number {
   return a.localeCompare(b, langs);
 }
+
+// This module holds app-wide state that boot fills once; an in-place hot update
+// would recreate it empty (stuck on the boot screen, raw string keys). Reload instead.
+import.meta.hot?.accept(() => location.reload());

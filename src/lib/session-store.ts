@@ -113,3 +113,7 @@ export const useApp = create<AppState>((set, get) => ({
     set({ profiles: state.profiles, firstRun: state.profiles.length === 0 });
   },
 }));
+
+// This module holds app-wide state that boot fills once; an in-place hot update
+// would recreate it empty (stuck on the boot screen, raw string keys). Reload instead.
+import.meta.hot?.accept(() => location.reload());
