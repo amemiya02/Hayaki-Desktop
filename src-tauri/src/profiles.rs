@@ -10,10 +10,11 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
 use std::sync::RwLock;
 
 use anki::services::BackendCollectionService;
-use anki::backend::Backend;
 use anki_proto::collection::CloseCollectionRequest;
 use anki_proto::collection::CreateBackupRequest;
 use anki_proto::collection::OpenCollectionRequest;
@@ -59,12 +60,20 @@ pub struct ProfilesState {
     current: Option<OpenProfile>,
 }
 
+/// The open profile. `current` is only ever locked for a moment, so the main
+/// thread can read it at any time. Anything that opens, closes, replaces or
+/// backs up the collection holds `collection` for its whole length instead
+/// (see [`Held`]), so the profile cannot change under it and quitting waits
+/// for it. Lock order: `collection`, then the core's own locks; `current` is
+/// never held while taking another lock.
 #[derive(Default)]
 pub struct Session {
     current: RwLock<Option<OpenProfile>>,
-    /// A backup was restored into the open profile. As in Anki, automatic
-    /// backups (and syncs) stay off until the profile closes.
+    /// A backup was restored into the open profile. As Anki's
+    /// `restoring_backup`, automatic backups and syncs stay off until the
+    /// profile is unloaded, from the moment the restore starts.
     restored: AtomicBool,
+    collection: Mutex<()>,
 }
 
 impl Session {
@@ -82,6 +91,73 @@ impl Session {
 
     pub fn restored(&self) -> bool {
         self.restored.load(Ordering::SeqCst)
+    }
+
+    /// Waits until no other collection operation runs, and keeps others out
+    /// until the guard drops.
+    pub fn hold(&self) -> Held<'_> {
+        Held {
+            session: self,
+            // The mutex guards no data, so a panic while it was held leaves
+            // nothing inconsistent behind it.
+            _guard: self.collection.lock().unwrap_or_else(|poison| poison.into_inner()),
+        }
+    }
+}
+
+/// Proof that this thread holds the session's collection lock.
+pub struct Held<'a> {
+    session: &'a Session,
+    _guard: MutexGuard<'a, ()>,
+}
+
+impl Held<'_> {
+    pub fn current(&self) -> Option<OpenProfile> {
+        self.session.current()
+    }
+
+    fn set(&self, profile: Option<OpenProfile>) {
+        *self.session.current.write().unwrap() = profile;
+    }
+
+    /// Marks the open profile as restored from a backup.
+    pub fn mark_restored(&self) {
+        self.session.restored.store(true, Ordering::SeqCst);
+    }
+
+    /// Closes the open collection, if any. Safe to call more than once.
+    pub fn close(&self, core: &Core, on_close: OnClose) {
+        let Some(profile) = self.current() else {
+            return;
+        };
+        let backend = core.backend();
+        if on_close == OnClose::Unload && !self.session.restored.swap(false, Ordering::SeqCst) {
+            if let Err(err) = backend.create_backup(backup_request(&profile, false)) {
+                eprintln!("backup on close failed: {err}");
+            }
+        }
+        if let Err(err) = backend.close_collection(CloseCollectionRequest {
+            downgrade_to_schema11: false,
+        }) {
+            eprintln!("closing the collection failed: {err}");
+        }
+        // The core does not wait for a backup still being written.
+        if let Err(err) = backend.await_backup_completion() {
+            eprintln!("backup failed: {err}");
+        }
+        // Only now, so the profile cannot be deleted while it closes.
+        self.set(None);
+    }
+
+    /// Opens `profile`'s collection; nothing may be open.
+    pub(crate) fn open(&self, core: &Core, profile: OpenProfile) -> Result<OpenProfile, String> {
+        fs::create_dir_all(&profile.media_folder).map_err(|err| err.to_string())?;
+        fs::create_dir_all(&profile.backup_folder).map_err(|err| err.to_string())?;
+        core.backend()
+            .open_collection(open_request(&profile))
+            .map_err(|err| err.to_string())?;
+        self.set(Some(profile.clone()));
+        Ok(profile)
     }
 }
 
@@ -101,11 +177,18 @@ fn read_file(root: &Path) -> ProfilesFile {
         .unwrap_or_default()
 }
 
-fn write_file(root: &Path, file: &ProfilesFile) -> Result<(), String> {
-    let json = serde_json::to_vec_pretty(file).map_err(|err| err.to_string())?;
-    let tmp = root.join("profiles.json.tmp");
+/// Writes `value` as JSON to `path` through a temporary file, so a crash
+/// leaves either the old file or the new one, never a torn one.
+fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
+    let json = serde_json::to_vec_pretty(value).map_err(|err| err.to_string())?;
+    let mut tmp = path.as_os_str().to_owned();
+    tmp.push(".tmp");
     fs::write(&tmp, json).map_err(|err| err.to_string())?;
-    fs::rename(&tmp, root.join("profiles.json")).map_err(|err| err.to_string())
+    fs::rename(&tmp, path).map_err(|err| err.to_string())
+}
+
+fn write_file(root: &Path, file: &ProfilesFile) -> Result<(), String> {
+    write_json(&root.join("profiles.json"), file)
 }
 
 fn now_secs() -> i64 {
@@ -207,57 +290,53 @@ pub fn profile_rename(app: AppHandle, session: State<'_, Session>, id: String, n
     state(&app, &session)
 }
 
+/// Held against the collection operations, so the profile cannot be opened
+/// while its folder is removed.
 #[tauri::command]
-pub fn profile_delete(app: AppHandle, session: State<'_, Session>, id: String) -> Result<ProfilesState, String> {
-    if session.current().is_some_and(|p| p.id == id) {
-        return Err("profile-open".into());
-    }
-    let root = data_root(&app)?;
+pub async fn profile_delete(app: AppHandle, id: String) -> Result<ProfilesState, String> {
+    let handle = app.clone();
+    blocking(handle, move |_, session| {
+        let held = session.hold();
+        if held.current().is_some_and(|p| p.id == id) {
+            return Err("profile-open".into());
+        }
+        delete_profile(&app, &id)?;
+        state(&app, session)
+    })
+    .await
+}
+
+fn delete_profile(app: &AppHandle, id: &str) -> Result<(), String> {
+    let root = data_root(app)?;
     let mut file = read_file(&root);
     file.profiles.retain(|p| p.id != id);
-    if file.last_opened.as_deref() == Some(id.as_str()) {
+    if file.last_opened.as_deref() == Some(id) {
         file.last_opened = None;
     }
     write_file(&root, &file)?;
-    let folder = root.join("profiles").join(&id);
+    let folder = root.join("profiles").join(id);
     if folder.exists() {
         fs::remove_dir_all(folder).map_err(|err| err.to_string())?;
     }
-    state(&app, &session)
+    Ok(())
 }
 
-/// Whether closing the collection makes a backup first.
+/// Why the collection closes.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum OnClose {
-    /// As Anki does when a profile closes: a backup if the collection changed
-    /// and the minimum interval has passed since the last one.
-    Backup,
-    /// The collection is reopened at once (a language change).
-    NoBackup,
+    /// The profile is unloaded, as when Anki closes a profile: a backup if
+    /// the collection changed and the minimum interval has passed (none after
+    /// a restore), and a restored profile counts as fresh again.
+    Unload,
+    /// The same profile opens again at once (a language change): no backup,
+    /// and a restore still keeps backups and syncs off.
+    Reopen,
 }
 
-/// Closes the open collection, if any. Safe to call more than once.
+/// Closes the open collection, if any, after any collection operation still
+/// running. Safe to call more than once.
 pub fn close_current(core: &Core, session: &Session, on_close: OnClose) {
-    let mut current = session.current.write().unwrap();
-    let Some(profile) = current.take() else {
-        return;
-    };
-    let restored = session.restored.swap(false, Ordering::SeqCst);
-    let backend = core.backend();
-    if on_close == OnClose::Backup && !restored {
-        if let Err(err) = backend.create_backup(backup_request(&profile, false)) {
-            eprintln!("backup on close failed: {err}");
-        }
-    }
-    if let Err(err) = backend.close_collection(CloseCollectionRequest {
-        downgrade_to_schema11: false,
-    }) {
-        eprintln!("closing the collection failed: {err}");
-    }
-    // The core does not wait for a backup still being written.
-    if let Err(err) = backend.await_backup_completion() {
-        eprintln!("backup failed: {err}");
-    }
+    session.hold().close(core, on_close);
 }
 
 /// A backup into the profile's backup folder, waiting until it is written.
@@ -269,13 +348,56 @@ pub fn backup_request(profile: &OpenProfile, force: bool) -> CreateBackupRequest
     }
 }
 
-#[tauri::command]
-pub async fn profile_open(
+fn profile_paths(root: &Path, meta: &ProfileMeta) -> OpenProfile {
+    let folder = root.join("profiles").join(&meta.id);
+    OpenProfile {
+        id: meta.id.clone(),
+        name: meta.name.clone(),
+        collection_path: folder.join("collection.anki2"),
+        media_folder: folder.join("collection.media"),
+        backup_folder: folder.join("backups"),
+        folder,
+    }
+}
+
+/// Opens `profile`, unloading the open one first. The profile already open
+/// stays as it is (the window reloading after a language change opens it
+/// again), so a restore into it keeps backups and syncs off.
+pub fn open_profile(core: &Core, session: &Session, profile: OpenProfile) -> Result<OpenProfile, String> {
+    let held = session.hold();
+    if let Some(current) = held.current().filter(|current| current.id == profile.id) {
+        return Ok(current);
+    }
+    held.close(core, OnClose::Unload);
+    held.open(core, profile)
+}
+
+/// Restarts the core in other interface languages, reopening the open
+/// collection afterwards, in the old core if the new one fails to start.
+pub fn change_langs(core: &Core, session: &Session, langs: Vec<String>) -> Result<(), String> {
+    let held = session.hold();
+    let reopen = held.current();
+    held.close(core, OnClose::Reopen);
+    let replaced = core.replace(langs).map_err(|err| err.to_string());
+    if let Some(profile) = reopen {
+        held.open(core, profile)?;
+    }
+    replaced
+}
+
+/// Runs `work` with the core and the session off the async runtime: the
+/// collection operations wait for each other and can take minutes.
+async fn blocking<T: Send + 'static>(
     app: AppHandle,
-    core: State<'_, Core>,
-    session: State<'_, Session>,
-    id: String,
-) -> Result<OpenProfile, String> {
+    work: impl FnOnce(&Core, &Session) -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(move || work(&app.state::<Core>(), &app.state::<Session>()))
+        .await
+        .map_err(|err| err.to_string())?
+}
+
+#[tauri::command]
+pub async fn profile_open(app: AppHandle, id: String) -> Result<OpenProfile, String> {
     let root = data_root(&app)?;
     let mut file = read_file(&root);
     let meta = file
@@ -284,61 +406,25 @@ pub async fn profile_open(
         .find(|p| p.id == id)
         .cloned()
         .ok_or("not-found")?;
-    close_current(&core, &session, OnClose::Backup);
-
-    let folder = root.join("profiles").join(&meta.id);
-    let media_folder = folder.join("collection.media");
-    let backup_folder = folder.join("backups");
-    fs::create_dir_all(&media_folder).map_err(|err| err.to_string())?;
-    fs::create_dir_all(&backup_folder).map_err(|err| err.to_string())?;
-    let collection_path = folder.join("collection.anki2");
-    let request = OpenCollectionRequest {
-        collection_path: collection_path.to_string_lossy().into_owned(),
-        media_folder_path: media_folder.to_string_lossy().into_owned(),
-        media_db_path: folder.join("collection.media.db2").to_string_lossy().into_owned(),
-    };
-    let backend = core.backend();
-    tauri::async_runtime::spawn_blocking(move || backend.open_collection(request))
-        .await
-        .map_err(|err| err.to_string())?
-        .map_err(|err| err.to_string())?;
-
-    let open = OpenProfile {
-        id: meta.id.clone(),
-        name: meta.name.clone(),
-        folder,
-        collection_path,
-        media_folder,
-        backup_folder,
-    };
-    *session.current.write().unwrap() = Some(open.clone());
+    let profile = profile_paths(&root, &meta);
+    let open = blocking(app, move |core, session| open_profile(core, session, profile)).await?;
     file.last_opened = Some(meta.id);
     write_file(&root, &file)?;
     Ok(open)
 }
 
 #[tauri::command]
-pub async fn profile_close(core: State<'_, Core>, session: State<'_, Session>) -> Result<(), String> {
-    close_current(&core, &session, OnClose::Backup);
-    Ok(())
+pub async fn profile_close(app: AppHandle) -> Result<(), String> {
+    blocking(app, |core, session| {
+        close_current(core, session, OnClose::Unload);
+        Ok(())
+    })
+    .await
 }
 
-/// Restarts the core in another interface language, reopening the current
-/// collection afterwards.
 #[tauri::command]
-pub async fn set_core_langs(
-    app: AppHandle,
-    core: State<'_, Core>,
-    session: State<'_, Session>,
-    langs: Vec<String>,
-) -> Result<(), String> {
-    let reopen = session.current().map(|p| p.id);
-    close_current(&core, &session, OnClose::NoBackup);
-    core.replace(langs).map_err(|err| err.to_string())?;
-    if let Some(id) = reopen {
-        profile_open(app, core, session, id).await?;
-    }
-    Ok(())
+pub async fn set_core_langs(app: AppHandle, langs: Vec<String>) -> Result<(), String> {
+    blocking(app, move |core, session| change_langs(core, session, langs)).await
 }
 
 fn open_request(profile: &OpenProfile) -> OpenCollectionRequest {
@@ -357,16 +443,16 @@ fn open_request(profile: &OpenProfile) -> OpenCollectionRequest {
 /// to do this, so it is opened again afterwards whatever the outcome.
 #[tauri::command]
 pub async fn collection_export_colpkg(
-    core: State<'_, Core>,
-    session: State<'_, Session>,
+    app: AppHandle,
     out_path: String,
     include_media: bool,
     legacy: bool,
 ) -> Result<(), String> {
     use anki::services::BackendImportExportService;
-    let profile = session.current().ok_or("no-profile")?;
-    let backend = core.backend();
-    tauri::async_runtime::spawn_blocking(move || {
+    blocking(app, move |core, session| {
+        let held = session.hold();
+        let profile = held.current().ok_or("no-profile")?;
+        let backend = core.backend();
         let result = backend.export_collection_package(anki_proto::import_export::ExportCollectionPackageRequest {
             out_path,
             include_media,
@@ -377,24 +463,26 @@ pub async fn collection_export_colpkg(
         reopened.map_err(|err| err.to_string())
     })
     .await
-    .map_err(|err| err.to_string())?
 }
 
-/// Replaces the profile's collection with a `.colpkg`. A backup of the current
-/// collection is made first, and the collection is opened again afterwards
-/// whatever the outcome.
-pub fn replace_collection(backend: &Backend, profile: &OpenProfile, path: String) -> Result<(), String> {
+/// Replaces the open profile's collection with a `.colpkg`. A backup of the
+/// current collection is made first, and the collection is opened again
+/// afterwards whatever the outcome. Holding the session for the whole of it
+/// keeps a profile switch or quitting from closing the collection halfway.
+pub fn replace_collection(core: &Core, held: &Held, path: String) -> Result<(), String> {
     use anki::services::BackendImportExportService;
+    let profile = held.current().ok_or("no-profile")?;
+    let backend = core.backend();
     // The result says whether a backup was written; a refusal is an error.
     let _ = backend
-        .create_backup(backup_request(profile, true))
+        .create_backup(backup_request(&profile, true))
         .map_err(|err| err.to_string())?;
     backend
         .close_collection(CloseCollectionRequest {
             downgrade_to_schema11: false,
         })
         .map_err(|err| err.to_string())?;
-    let request = open_request(profile);
+    let request = open_request(&profile);
     let result = backend.import_collection_package(anki_proto::import_export::ImportCollectionPackageRequest {
         col_path: request.collection_path.clone(),
         backup_path: path,
@@ -407,36 +495,22 @@ pub fn replace_collection(backend: &Backend, profile: &OpenProfile, path: String
 }
 
 #[tauri::command]
-pub async fn collection_import_colpkg(
-    core: State<'_, Core>,
-    session: State<'_, Session>,
-    path: String,
-) -> Result<(), String> {
-    let profile = session.current().ok_or("no-profile")?;
-    let backend = core.backend();
-    tauri::async_runtime::spawn_blocking(move || replace_collection(&backend, &profile, path))
-        .await
-        .map_err(|err| err.to_string())?
-}
-
-/// Marks the open profile as restored from a backup.
-pub fn mark_restored(session: &Session) {
-    session.restored.store(true, Ordering::SeqCst);
+pub async fn collection_import_colpkg(app: AppHandle, path: String) -> Result<(), String> {
+    blocking(app, move |core, session| replace_collection(core, &session.hold(), path)).await
 }
 
 /// Makes a backup of the open collection now, into the profile's backup folder.
 #[tauri::command]
-pub async fn collection_backup(core: State<'_, Core>, session: State<'_, Session>) -> Result<bool, String> {
-    let profile = session.current().ok_or("no-profile")?;
-    let backend = core.backend();
-    tauri::async_runtime::spawn_blocking(move || {
-        backend
+pub async fn collection_backup(app: AppHandle) -> Result<bool, String> {
+    blocking(app, |core, session| {
+        let held = session.hold();
+        let profile = held.current().ok_or("no-profile")?;
+        core.backend()
             .create_backup(backup_request(&profile, true))
             .map(|created| created.val)
             .map_err(|err| err.to_string())
     })
     .await
-    .map_err(|err| err.to_string())?
 }
 
 /// The sync account of the open profile: the key the server issued at sign-in
@@ -471,10 +545,7 @@ pub fn sync_account_get(session: State<'_, Session>) -> Result<Option<SyncAccoun
 pub fn sync_account_set(session: State<'_, Session>, account: Option<SyncAccount>) -> Result<(), String> {
     let path = sync_file(&session)?;
     match account {
-        Some(account) => {
-            let json = serde_json::to_vec_pretty(&account).map_err(|err| err.to_string())?;
-            fs::write(path, json).map_err(|err| err.to_string())
-        }
+        Some(account) => write_json(&path, &account),
         None => {
             if path.exists() {
                 fs::remove_file(path).map_err(|err| err.to_string())?;
@@ -510,20 +581,24 @@ fn sync_prefs_file(session: &Session) -> Result<PathBuf, String> {
         .ok_or_else(|| "no-profile".to_string())
 }
 
-#[tauri::command]
-pub fn sync_prefs_get(session: State<'_, Session>) -> Result<SyncPrefs, String> {
-    let path = sync_prefs_file(&session)?;
-    Ok(fs::read(path)
+/// The preferences in `path`; Anki's defaults when there are none yet.
+fn read_sync_prefs(path: &Path) -> SyncPrefs {
+    fs::read(path)
         .ok()
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-        .unwrap_or_default())
+        .unwrap_or_default()
 }
 
 #[tauri::command]
+pub fn sync_prefs_get(session: State<'_, Session>) -> Result<SyncPrefs, String> {
+    Ok(read_sync_prefs(&sync_prefs_file(&session)?))
+}
+
+/// Written whole or not at all: a torn file would read as the defaults and
+/// turn syncing on open and close back on.
+#[tauri::command]
 pub fn sync_prefs_set(session: State<'_, Session>, prefs: SyncPrefs) -> Result<(), String> {
-    let path = sync_prefs_file(&session)?;
-    let json = serde_json::to_vec_pretty(&prefs).map_err(|err| err.to_string())?;
-    fs::write(path, json).map_err(|err| err.to_string())
+    write_json(&sync_prefs_file(&session)?, &prefs)
 }
 
 #[cfg(test)]
@@ -559,7 +634,7 @@ mod tests {
         let session = Session::default();
         let profile = open_in(&dir, &core, &session);
 
-        close_current(&core, &session, OnClose::Backup);
+        close_current(&core, &session, OnClose::Unload);
         assert!(session.current().is_none());
         assert_eq!(backups_in(&profile), 1, "a new collection is backed up on close");
         // The collection is closed: it opens again.
@@ -568,7 +643,7 @@ mod tests {
             .close_collection(CloseCollectionRequest { downgrade_to_schema11: false })
             .unwrap();
         // Closing again with nothing open is harmless.
-        close_current(&core, &session, OnClose::Backup);
+        close_current(&core, &session, OnClose::Unload);
         let _ = fs::remove_dir_all(dir);
     }
 
@@ -579,10 +654,88 @@ mod tests {
         let session = Session::default();
         let profile = open_in(&dir, &core, &session);
 
-        mark_restored(&session);
-        close_current(&core, &session, OnClose::Backup);
+        session.hold().mark_restored();
+        close_current(&core, &session, OnClose::Unload);
         assert_eq!(backups_in(&profile), 0);
         assert!(!session.restored(), "the next profile opened backs up again");
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_language_change_keeps_a_restore_in_force() {
+        let dir = std::env::temp_dir().join(format!("hayaki-langs-test-{}", std::process::id()));
+        let core = Core::new(vec!["en".into()]).unwrap();
+        let session = Session::default();
+        let profile = open_in(&dir, &core, &session);
+
+        session.hold().mark_restored();
+        change_langs(&core, &session, vec!["ja".into()]).unwrap();
+        assert_eq!(core.langs(), ["ja"]);
+        assert!(session.restored(), "backups and syncs stay off after the reopen");
+        assert_eq!(session.current().map(|p| p.id), Some(profile.id.clone()));
+        // The window reloads and opens the same profile: nothing changes.
+        open_profile(&core, &session, profile.clone()).unwrap();
+        assert!(session.restored());
+        assert_eq!(backups_in(&profile), 0);
+        // The collection is really open again in the new core.
+        let created = core.backend().create_backup(backup_request(&profile, true)).unwrap();
+        assert!(created.val);
+
+        // Unloading the profile ends the restore.
+        close_current(&core, &session, OnClose::Unload);
+        assert!(!session.restored());
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn opening_another_profile_unloads_the_open_one() {
+        let dir = std::env::temp_dir().join(format!("hayaki-switch-test-{}", std::process::id()));
+        let core = Core::new(vec!["en".into()]).unwrap();
+        let session = Session::default();
+        let first = open_in(&dir.join("a"), &core, &session);
+        session.hold().mark_restored();
+
+        let mut second = first.clone();
+        second.id = "other".into();
+        second.folder = dir.join("b");
+        second.collection_path = second.folder.join("collection.anki2");
+        second.media_folder = second.folder.join("collection.media");
+        second.backup_folder = second.folder.join("backups");
+        open_profile(&core, &session, second.clone()).unwrap();
+
+        assert_eq!(session.current().map(|p| p.id), Some("other".into()));
+        assert!(!session.restored(), "the next profile backs up and syncs again");
+        assert_eq!(backups_in(&first), 0, "a restored profile closes without a backup");
+        assert!(second.collection_path.exists());
+        close_current(&core, &session, OnClose::Unload);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn sync_prefs_are_written_whole_and_read_back() {
+        let dir = std::env::temp_dir().join(format!("hayaki-prefs-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sync-prefs.json");
+
+        assert_eq!(read_sync_prefs(&path), SyncPrefs::default(), "no file yet");
+        let off = SyncPrefs {
+            auto_sync: false,
+            sync_media: true,
+        };
+        write_json(&path, &off).unwrap();
+        assert_eq!(read_sync_prefs(&path), off);
+        let media_off = SyncPrefs {
+            auto_sync: false,
+            sync_media: false,
+        };
+        write_json(&path, &media_off).unwrap();
+        assert_eq!(read_sync_prefs(&path), media_off);
+        let names: Vec<_> = fs::read_dir(&dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+            .collect();
+        assert_eq!(names, ["sync-prefs.json"], "no temporary file is left behind");
         let _ = fs::remove_dir_all(dir);
     }
 }

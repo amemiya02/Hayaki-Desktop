@@ -120,7 +120,10 @@ export function useSyncAction() {
   const runRef = useRef(run);
   runRef.current = run;
   useEffect(() => {
-    if (!profileId) return;
+    if (!profileId) {
+      useSync.getState().unload();
+      return;
+    }
     let current = true;
     load()
       .then(() => {

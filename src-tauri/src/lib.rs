@@ -131,6 +131,7 @@ pub fn run() {
             profiles::sync_prefs_set,
             lifecycle::backups_list,
             lifecycle::backup_restore,
+            lifecycle::backup_restored,
             lifecycle::lifecycle_close_ack,
             lifecycle::lifecycle_quit,
         ])

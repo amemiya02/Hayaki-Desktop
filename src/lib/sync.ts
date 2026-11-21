@@ -53,8 +53,10 @@ interface SyncState {
   logOpen: boolean;
   lastError: string | null;
   lastSynced: number | null;
-  /** Loads the open profile's account and preferences. */
+  /** Forgets the account and preferences at once, then loads the open profile's. */
   load(): Promise<void>;
+  /** Forgets the account and preferences: no profile is open. */
+  unload(): void;
   setPrefs(prefs: Partial<SyncPrefs>): Promise<void>;
   showLog(open: boolean): void;
   /** Resolves once no sync is running. */
@@ -69,6 +71,10 @@ const getAccount = () => invoke<SyncAccount | null>("sync_account_get");
 const setAccount = (account: SyncAccount | null) => invoke<void>("sync_account_set", { account });
 const getPrefs = () => invoke<SyncPrefs>("sync_prefs_get");
 const savePrefs = (prefs: SyncPrefs) => invoke<void>("sync_prefs_set", { prefs });
+const getRestored = () => invoke<boolean>("backup_restored");
+
+/** Nothing known about a profile: not signed in, and no syncing on open or close. */
+const UNLOADED = { account: null, prefs: DEFAULT_PREFS, loaded: false, restored: false, log: [], lastError: null, lastSynced: null };
 
 function auth(account: SyncAccount) {
   return { hkey: account.hkey, endpoint: account.currentEndpoint ?? account.endpoint ?? undefined };
@@ -90,6 +96,8 @@ function describeProgress(p: Awaited<ReturnType<typeof core.latestProgress>>): s
 
 export const useSync = create<SyncState>((set, get) => {
   let poller: ReturnType<typeof setInterval> | null = null;
+  /** Bumped whenever the profile changes, so a load for an earlier profile is dropped. */
+  let generation = 0;
 
   function startPolling() {
     stopPolling();
@@ -169,8 +177,19 @@ export const useSync = create<SyncState>((set, get) => {
     lastSynced: null,
 
     async load() {
-      const [account, prefs] = await Promise.all([getAccount(), getPrefs().catch(() => DEFAULT_PREFS)]);
-      set({ account, prefs, loaded: true, restored: false, log: [], lastError: null, lastSynced: null });
+      const mine = ++generation;
+      set(UNLOADED);
+      const [account, prefs, restored] = await Promise.all([
+        getAccount(),
+        getPrefs().catch(() => DEFAULT_PREFS),
+        getRestored(),
+      ]);
+      if (mine === generation) set({ account, prefs, restored, loaded: true });
+    },
+
+    unload() {
+      generation++;
+      set(UNLOADED);
     },
 
     async setPrefs(change) {

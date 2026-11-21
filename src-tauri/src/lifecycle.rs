@@ -106,48 +106,56 @@ pub fn backups_list(session: State<'_, Session>) -> Result<Vec<BackupEntry>, Str
 
 /// Replaces the open collection with a backup, after backing up the current
 /// one. The chosen file is copied first, because that backup can thin the
-/// backup folder. Automatic backups stay off until the profile closes.
+/// backup folder. As Anki's `restoring_backup`, automatic backups and syncs
+/// stay off from the start of the restore, whatever its outcome, until the
+/// profile is unloaded.
+pub fn restore_backup(core: &Core, session: &Session, path: &str) -> Result<(), String> {
+    let held = session.hold();
+    let profile = held.current().ok_or("no-profile")?;
+    held.mark_restored();
+    let copy = profile.folder.join("restoring.colpkg");
+    fs::copy(path, &copy).map_err(|err| err.to_string())?;
+    let result = profiles::replace_collection(core, &held, copy.to_string_lossy().into_owned());
+    let _ = fs::remove_file(&copy);
+    result
+}
+
 #[tauri::command]
-pub async fn backup_restore(core: State<'_, Core>, session: State<'_, Session>, path: String) -> Result<(), String> {
-    let profile = session.current().ok_or("no-profile")?;
-    let backend = core.backend();
-    tauri::async_runtime::spawn_blocking(move || {
-        let copy = profile.folder.join("restoring.colpkg");
-        fs::copy(&path, &copy).map_err(|err| err.to_string())?;
-        let result = profiles::replace_collection(&backend, &profile, copy.to_string_lossy().into_owned());
-        let _ = fs::remove_file(&copy);
-        result
-    })
-    .await
-    .map_err(|err| err.to_string())??;
-    profiles::mark_restored(&session);
-    Ok(())
+pub async fn backup_restore(app: AppHandle, path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || restore_backup(&app.state::<Core>(), &app.state::<Session>(), &path))
+        .await
+        .map_err(|err| err.to_string())?
+}
+
+/// Whether a backup was restored into the open profile since it was loaded.
+#[tauri::command]
+pub fn backup_restored(session: State<'_, Session>) -> bool {
+    session.restored()
 }
 
 /// A periodic backup, as Anki's timer makes: only when the collection changed
-/// and the minimum interval in the preferences has passed.
-fn periodic_backup(app: &AppHandle) {
-    let session = app.state::<Session>();
-    let Some(profile) = session.current() else {
-        return;
+/// and the minimum interval in the preferences has passed. The session is
+/// held throughout, so the backup is of the profile whose folder it goes to.
+fn periodic_backup(core: &Core, session: &Session) -> Result<(), AnkiError> {
+    let held = session.hold();
+    let Some(profile) = held.current() else {
+        return Ok(());
     };
     if session.restored() {
-        return;
+        return Ok(());
     }
-    let backend = app.state::<Core>().backend();
-    match backend.create_backup(profiles::backup_request(&profile, false)) {
-        // Closed for an import, an export or a profile switch in the meantime.
-        Ok(_) | Err(AnkiError::CollectionNotOpen) => {}
-        Err(err) => {
-            let _ = app.emit(BACKUP_FAILED, err.to_string());
-        }
+    match core.backend().create_backup(profiles::backup_request(&profile, false)) {
+        Ok(_) | Err(AnkiError::CollectionNotOpen) => Ok(()),
+        Err(err) => Err(err),
     }
 }
 
 pub fn start_backup_timer(app: AppHandle) {
     std::thread::spawn(move || loop {
         std::thread::sleep(BACKUP_CHECK);
-        periodic_backup(&app);
+        if let Err(err) = periodic_backup(&app.state::<Core>(), &app.state::<Session>()) {
+            let _ = app.emit(BACKUP_FAILED, err.to_string());
+        }
     });
 }
 
@@ -164,12 +172,13 @@ pub struct Lifecycle {
 }
 
 /// Abandons a sync still running, then closes the collection with Anki's
-/// backup on close. Safe to call with no profile open, and more than once.
+/// backup on close, after a restore, import or backup still running. Safe to
+/// call with no profile open, and more than once.
 pub fn shutdown(core: &Core, session: &Session) {
     let backend = core.backend();
     let _ = backend.abort_sync();
     let _ = backend.abort_media_sync();
-    profiles::close_current(core, session, OnClose::Backup);
+    profiles::close_current(core, session, OnClose::Unload);
 }
 
 /// Closes the collection and exits. Runs once, off the event loop.
@@ -287,5 +296,99 @@ mod tests {
         shutdown(&core, &session);
         shutdown(&core, &session);
         assert!(session.current().is_none());
+    }
+
+    fn profile_in(dir: &Path, id: &str) -> profiles::OpenProfile {
+        let folder = dir.join(id);
+        profiles::OpenProfile {
+            id: id.into(),
+            name: id.into(),
+            collection_path: folder.join("collection.anki2"),
+            media_folder: folder.join("collection.media"),
+            backup_folder: folder.join("backups"),
+            folder,
+        }
+    }
+
+    fn backups(profile: &profiles::OpenProfile) -> usize {
+        list_backups(&profile.backup_folder).len()
+    }
+
+    #[test]
+    fn a_periodic_backup_goes_to_the_profile_open_when_it_runs() {
+        let dir = temp_dir("periodic");
+        let core = Core::new(vec!["en".into()]).unwrap();
+        let session = Session::default();
+        let a = profile_in(&dir, "a");
+        let b = profile_in(&dir, "b");
+        profiles::open_profile(&core, &session, a.clone()).unwrap();
+
+        std::thread::scope(|scope| {
+            // A profile switch is under way when the timer fires.
+            let held = session.hold();
+            let timer = scope.spawn(|| periodic_backup(&core, &session));
+            std::thread::sleep(Duration::from_millis(200));
+            assert!(!timer.is_finished(), "the backup waits for the switch");
+            held.close(&core, OnClose::Unload);
+            held.open(&core, b.clone()).unwrap();
+            drop(held);
+            timer.join().unwrap().unwrap();
+        });
+
+        assert_eq!(backups(&a), 1, "only the backup on close");
+        assert_eq!(backups(&b), 1, "the periodic backup is of the profile now open");
+        shutdown(&core, &session);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn quitting_waits_for_a_restore_to_finish() {
+        let dir = temp_dir("restore");
+        let core = Core::new(vec!["en".into()]).unwrap();
+        let session = Session::default();
+        let profile = profile_in(&dir, "a");
+        profiles::open_profile(&core, &session, profile.clone()).unwrap();
+        let _ = core.backend().create_backup(profiles::backup_request(&profile, true)).unwrap();
+        let backup = list_backups(&profile.backup_folder).remove(0).path;
+
+        let mut restored_backups = 0;
+        std::thread::scope(|scope| {
+            // A restore is running.
+            let held = session.hold();
+            let quit = scope.spawn(|| shutdown(&core, &session));
+            std::thread::sleep(Duration::from_millis(200));
+            assert!(!quit.is_finished(), "quitting waits");
+            assert!(session.current().is_some());
+            held.mark_restored();
+            profiles::replace_collection(&core, &held, backup.clone()).unwrap();
+            restored_backups = backups(&profile);
+            drop(held);
+            quit.join().unwrap();
+        });
+
+        assert!(session.current().is_none());
+        assert!(!session.restored());
+        assert_eq!(backups(&profile), restored_backups, "no backup on close after a restore");
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_restore_turns_automatic_backups_off_until_the_profile_closes() {
+        let dir = temp_dir("restored");
+        let core = Core::new(vec!["en".into()]).unwrap();
+        let session = Session::default();
+        let profile = profile_in(&dir, "a");
+        profiles::open_profile(&core, &session, profile.clone()).unwrap();
+        let _ = core.backend().create_backup(profiles::backup_request(&profile, true)).unwrap();
+        let backup = list_backups(&profile.backup_folder).remove(0).path;
+
+        restore_backup(&core, &session, &backup).unwrap();
+        assert!(session.restored());
+        assert!(!profile.folder.join("restoring.colpkg").exists());
+        let before = backups(&profile);
+        periodic_backup(&core, &session).unwrap();
+        shutdown(&core, &session);
+        assert_eq!(backups(&profile), before, "no backup after a restore");
+        let _ = fs::remove_dir_all(dir);
     }
 }

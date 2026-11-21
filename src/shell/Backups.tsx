@@ -47,9 +47,11 @@ export async function restoreBackup(path: string): Promise<void> {
   // Anki closes the profile first, which syncs on close.
   await beforeProfileClose();
   const id = toast.loading(tl("restoring"));
+  // As the shell does, from the start of the restore and whatever its outcome:
+  // quitting meanwhile must not sync a half-restored collection.
+  useSync.setState({ restored: true });
   try {
     await invoke("backup_restore", { path });
-    useSync.setState({ restored: true });
     toast.success(tr("qt-misc-automatic-syncing-and-backups-have-been"), { id, duration: 10_000 });
   } catch (error) {
     toast.error(tl("restoreFailed"), { id, description: errorText(error) });
