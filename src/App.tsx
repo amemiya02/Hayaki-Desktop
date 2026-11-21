@@ -37,6 +37,9 @@ import { AnkiConnectHost } from "@/shell/AnkiConnectHost";
 import { ConfirmHost } from "@/components/confirm";
 import { CardInfoHost } from "@/screens/card-info";
 import { FilteredHost } from "@/screens/filtered";
+import { pluginPanelTitle } from "@/lib/plugins/host";
+import { tp } from "@/lib/strings/plugins";
+import { PluginHost } from "@/shell/PluginHost";
 
 // The larger screens load on first use, so the app starts with only what Decks and Study need.
 const AddScreen = lazy(() => import("@/screens/add/AddScreen").then((m) => ({ default: m.AddScreen })));
@@ -50,6 +53,8 @@ const ImageOcclusionScreen = lazy(() => import("@/screens/image-occlusion").then
 const SettingsScreen = lazy(() => import("@/screens/Settings").then((m) => ({ default: m.SettingsScreen })));
 const PackageImportHost = lazy(() => import("@/screens/import-csv/PackageImport").then((m) => ({ default: m.PackageImportHost })));
 const StatsScreen = lazy(() => import("@/screens/stats/Stats").then((m) => ({ default: m.StatsScreen })));
+const PluginsScreen = lazy(() => import("@/screens/plugins/PluginsScreen").then((m) => ({ default: m.PluginsScreen })));
+const PluginPanelScreen = lazy(() => import("@/screens/plugins/PanelScreen").then((m) => ({ default: m.PluginPanelScreen })));
 
 function routeTitle(route: Route): string {
   switch (route.name) {
@@ -75,6 +80,10 @@ function routeTitle(route: Route): string {
       return t("decks.import");
     case "image-occlusion":
       return tr("notetypes-image-occlusion-name");
+    case "plugins":
+      return tp("title");
+    case "plugin":
+      return pluginPanelTitle(route.pluginId, route.panelId);
     case "study":
       return "";
   }
@@ -157,6 +166,8 @@ function routeKey(route: Route): string {
       return `notetype:${route.notetypeId}`;
     case "import-csv":
       return `import-csv:${route.path}`;
+    case "plugin":
+      return `plugin:${route.pluginId}:${route.panelId}`;
     default:
       return route.name;
   }
@@ -190,6 +201,10 @@ function Screen({ route }: { route: Route }) {
       return <ImportCsvScreen key={route.path} path={route.path} />;
     case "image-occlusion":
       return <ImageOcclusionScreen mode={route.mode} />;
+    case "plugins":
+      return <PluginsScreen />;
+    case "plugin":
+      return <PluginPanelScreen pluginId={route.pluginId} panelId={route.panelId} />;
   }
 }
 
@@ -313,6 +328,7 @@ function Workspace() {
   const [resizing, setResizing] = useState(false);
   const sync = useSyncAction();
   const m = motionTokens();
+  const profileId = useApp((s) => s.profile?.id);
   useGlobalShortcuts();
 
   // Y syncs, as in Anki.
@@ -385,6 +401,8 @@ function Workspace() {
       </Suspense>
       <CardInfoHost />
       <FilteredHost />
+      {/* A profile's plugins start afresh when another profile opens. */}
+      <PluginHost key={profileId} />
     </div>
   );
 }

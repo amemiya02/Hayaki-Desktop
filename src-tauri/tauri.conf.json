@@ -39,7 +39,7 @@
         "connect-src": "'self' ipc: http://ipc.localhost media: http://media.localhost",
         "img-src": "'self' data: blob: media: http://media.localhost https:",
         "media-src": "'self' blob: media: http://media.localhost",
-        "frame-src": "'self' media: http://media.localhost",
+        "frame-src": "'self' media: http://media.localhost plugin: http://plugin.localhost",
         "style-src": "'self' 'unsafe-inline'",
         "font-src": "'self' data:"
       }

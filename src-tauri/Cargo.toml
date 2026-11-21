@@ -56,10 +56,14 @@ reqwest = { version = "0.12", default-features = false }
 data-encoding = "2.9.0"
 sha1 = "0.10.6"
 unicode-normalization = "0.1.24"
+zip = { version = "4.1.0", default-features = false, features = ["deflate", "time"] }
+ammonia = "4.1.2"
+rand = "0.9"
 
 [dev-dependencies]
 anki_proto_gen.workspace = true
 prost-reflect.workspace = true
+tempfile = "3.20.0"
 
 [profile.dev]
 # The core is slow unoptimised; optimise dependencies even in debug builds.

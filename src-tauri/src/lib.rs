@@ -5,6 +5,8 @@ mod ankiconnect;
 mod core;
 mod lifecycle;
 mod media;
+mod navigation;
+mod plugins;
 mod profiles;
 
 use serde::Serialize;
@@ -87,12 +89,15 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(navigation::guard())
         .manage(core)
         .manage(Session::default())
         .manage(lifecycle::Lifecycle::default())
         .setup(|app| {
             lifecycle::start_backup_timer(app.handle().clone());
             ankiconnect::AnkiConnect::init(app.handle());
+            app.manage(plugins::start_session(app.handle()));
+            plugins::start_watchdog(app.handle().clone());
             #[cfg(target_os = "macos")]
             app.set_menu(quit_through_lifecycle(app.handle())?)?;
             Ok(())
@@ -112,6 +117,16 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("media", |ctx, request, responder| {
             let folder = ctx.app_handle().state::<Session>().media_folder();
             std::thread::spawn(move || responder.respond(media::serve(folder, &request)));
+        })
+        .register_asynchronous_uri_scheme_protocol("plugin", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            std::thread::spawn(move || {
+                // The session exists from setup on, before any plugin page is asked for.
+                let Some(session) = app.try_state::<plugins::PluginSession>() else {
+                    return responder.respond(plugins::scheme::unavailable());
+                };
+                responder.respond(plugins::scheme::serve(plugins::plugins_root(&app), &session.tickets, &request))
+            });
         })
         .invoke_handler(tauri::generate_handler![
             app_info,
@@ -139,12 +154,25 @@ pub fn run() {
             lifecycle::backup_restored,
             lifecycle::lifecycle_close_ack,
             lifecycle::lifecycle_quit,
+            plugins::plugins_list,
+            plugins::plugins_heartbeat,
+            plugins::plugin_frame_ticket,
+            plugins::plugin_install_stage,
+            plugins::plugin_install_commit,
+            plugins::plugin_install_cancel,
+            plugins::plugin_uninstall,
+            plugins::plugin_set_enabled,
+            plugins::plugin_set_failed,
+            plugins::plugin_storage_get,
+            plugins::plugin_storage_set,
+            plugins::plugin_sanitize_html,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Hayaki");
 
     app.run(|handle, event| {
         if let tauri::RunEvent::Exit = event {
+            plugins::finish_session(handle, lifecycle::interface_answered(handle));
             lifecycle::shutdown(&handle.state::<Core>(), &handle.state::<Session>());
         }
     });

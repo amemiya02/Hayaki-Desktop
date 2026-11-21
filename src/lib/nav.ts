@@ -16,6 +16,8 @@ export type Route =
   | { name: "notetype"; notetypeId: bigint; tab?: "fields" | "templates" | "styling" }
   | { name: "change-notetype"; noteIds: bigint[] }
   | { name: "import-csv"; path: string }
+  | { name: "plugins" }
+  | { name: "plugin"; pluginId: string; panelId: string }
   | { name: "image-occlusion"; mode: { kind: "add"; imagePath?: string; notetypeId?: bigint } | { kind: "edit"; noteId: bigint } };
 
 /**

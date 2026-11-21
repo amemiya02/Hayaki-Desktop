@@ -1,0 +1,10 @@
+{
+  "id": "io.github.hayaki.review-streak",
+  "name": "Review Streak",
+  "version": "1.0.0",
+  "description": "Counts the Cards you answer today, shows the count on each Card and in a panel.",
+  "author": "Hayaki contributors",
+  "entry": "main.js",
+  "panels": [{ "id": "today", "title": "Today's Answers", "icon": "flame", "entry": "panel.html" }],
+  "permissions": ["reviewer", "ui"]
+}

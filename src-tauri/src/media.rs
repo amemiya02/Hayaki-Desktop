@@ -5,6 +5,12 @@
 //! scheme (`http://media.localhost/<file>` on Windows, `media://localhost/<file>`
 //! elsewhere). Only plain file names inside the media folder are served, and
 //! byte ranges are supported so audio and video can seek.
+//!
+//! A media file opened as a page runs nothing: every file carries a sandbox
+//! policy with no script or network sources, and `nosniff`, so an `.html` file added to the
+//! media folder cannot become a page with scripts (ADR 0004). Images, sounds,
+//! scripts and styles that the card page loads are unaffected, since a
+//! policy applies only to the document it arrives with.
 
 use std::fs::File;
 use std::io::Read;
@@ -33,14 +39,14 @@ fn resolve(media_folder: &PathBuf, path: &str) -> Option<PathBuf> {
         .decode_utf8()
         .ok()?
         .into_owned();
-    if decoded.is_empty()
-        || decoded.contains(['/', '\\', ':'])
-        || decoded == "."
-        || decoded == ".."
-    {
-        return None;
-    }
-    Some(media_folder.join(decoded))
+    plain_name(&decoded).then(|| media_folder.join(decoded))
+}
+
+/// A single file name that cannot leave the folder it is joined to: no
+/// separators, no drive prefix, and not `.` or `..`. The plugin scheme applies
+/// the same rule to every segment of a plugin's paths.
+pub(crate) fn plain_name(name: &str) -> bool {
+    !(name.is_empty() || name.contains(['/', '\\', ':', '\0']) || name == "." || name == "..")
 }
 
 fn parse_range(value: &str, len: u64) -> Option<(u64, u64)> {
@@ -78,6 +84,11 @@ fn serve_card_asset(path: &str) -> Response<Vec<u8>> {
         .unwrap()
 }
 
+/// No scripts and no network. Styles, images and fonts stay, because an SVG
+/// shown as an image also gets this policy and often styles itself inline.
+const MEDIA_FILE_CSP: &str =
+    "sandbox; default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:";
+
 pub fn serve(media_folder: Option<PathBuf>, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     if let Some(asset) = request.uri().path().strip_prefix("/_hayaki/") {
         return serve_card_asset(asset);
@@ -97,7 +108,9 @@ pub fn serve(media_folder: Option<PathBuf>, request: &Request<Vec<u8>>) -> Respo
         .header(header::CONTENT_TYPE, mime.essence_str())
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .header(header::CACHE_CONTROL, "no-cache");
+        .header(header::CACHE_CONTROL, "no-cache")
+        .header(header::CONTENT_SECURITY_POLICY, MEDIA_FILE_CSP)
+        .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff");
 
     let range = request
         .headers()
@@ -156,6 +169,31 @@ mod tests {
             resolve(&folder, "/%E7%8C%AB.jpg"),
             Some(folder.join("猫.jpg"))
         );
+    }
+
+    fn get(folder: &std::path::Path, path: &str, range: Option<&str>) -> Response<Vec<u8>> {
+        let mut request = Request::builder().uri(format!("media://localhost{path}"));
+        if let Some(range) = range {
+            request = request.header(header::RANGE, range);
+        }
+        serve(Some(folder.to_path_buf()), &request.body(Vec::new()).unwrap())
+    }
+
+    #[test]
+    fn media_files_run_nothing_when_opened_as_a_page() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("x.html"), "<script>1</script>").unwrap();
+        for response in [get(dir.path(), "/x.html", None), get(dir.path(), "/x.html", Some("bytes=0-3"))] {
+            assert!(response.status().is_success());
+            let policy = response.headers()[header::CONTENT_SECURITY_POLICY].to_str().unwrap();
+            assert!(policy.starts_with("sandbox; default-src 'none';"), "{policy}");
+            assert!(!policy.contains("script-src") && !policy.contains("connect-src"), "{policy}");
+            assert_eq!(response.headers()[header::X_CONTENT_TYPE_OPTIONS], "nosniff");
+        }
+        // The card page is the interface's own and keeps its scripts.
+        let card = get(dir.path(), "/_hayaki/card.html", None);
+        assert!(card.status().is_success());
+        assert!(card.headers().get(header::CONTENT_SECURITY_POLICY).is_none());
     }
 
     #[test]

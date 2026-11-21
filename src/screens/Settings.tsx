@@ -13,6 +13,7 @@ import { usePrefs } from "@/lib/prefs";
 import { createProfile } from "@/lib/profiles";
 import { useApp } from "@/lib/session-store";
 import { useNav } from "@/lib/nav";
+import { tp } from "@/lib/strings/plugins";
 import { themeColors, themeNames, themeOrder, type Appearance, type ThemeId } from "@/lib/themes";
 import { useResolvedAppearance } from "@/lib/useAppearance";
 import { AnkiPreferencesSections } from "@/screens/preferences";
@@ -113,6 +114,17 @@ export function SettingsScreen() {
           >
             <span className="min-w-0 flex-1 text-body text-ink">{tr("qt-misc-manage-note-types")}</span>
             <span className="tabular text-caption text-ink-3">{displayChord("Ctrl+Shift+N")}</span>
+            <ChevronRight className="size-4 text-ink-3 rtl:rotate-180" />
+          </button>
+          <button
+            type="button"
+            onClick={() => go({ name: "plugins" })}
+            className="flex min-h-[52px] w-full items-center gap-6 px-4 py-2.5 text-start transition-colors duration-[var(--dur-fast)] hover:bg-surface-2 focus-visible:bg-accent-softer"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-body text-ink">{tp("title")}</span>
+              <span className="mt-0.5 block text-caption text-ink-3">{tp("manageHint")}</span>
+            </span>
             <ChevronRight className="size-4 text-ink-3 rtl:rotate-180" />
           </button>
         </SettingsSection>

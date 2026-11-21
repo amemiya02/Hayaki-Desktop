@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CardFrame, type CardFrameContent, type CardFrameHandle, type ForwardedKey } from "@/components/CardFrame";
+import { useInjections, withInjections } from "@/lib/plugins/injection";
 import { Button, cn, IconButton, Kbd, onAccentKbd, Tooltip } from "@/components/ui";
 import { withChord } from "@/lib/chord";
 import { QueuedCards_Queue } from "@/lib/anki/proto/anki/scheduler_pb";
@@ -107,12 +108,13 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
     useSession.getState().setNightMode(night);
   }, [night]);
 
+  const injections = useInjections((st) => st.byPlugin);
   const content = useMemo<CardFrameContent | null>(() => {
     const r = s.rendered;
     if (!r) return null;
     // The answer stays up while the next Card loads and behind the timebox notice.
     const answerSide = s.phase !== "question" && s.answerHtml !== null;
-    return {
+    return withInjections({
       html: answerSide ? s.answerHtml! : r.question,
       css: r.css,
       bodyClass: night ? r.bodyClass.includes("nightMode") ? r.bodyClass : `${r.bodyClass} nightMode night_mode` : r.bodyClass.replace(/\s*nightMode night_mode/, ""),
@@ -120,8 +122,8 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
       frame: { dark: night, vars: cardFrameVars(theme, resolved), dir: direction(), lang: firstLanguage() },
       flag: s.flag,
       marked: s.marked,
-    };
-  }, [s.rendered, s.phase, s.answerHtml, night, theme, resolved, s.flag, s.marked]);
+    }, injections);
+  }, [s.rendered, s.phase, s.answerHtml, night, theme, resolved, s.flag, s.marked, injections]);
 
   // Each side's sounds play as it appears when the preset allows; otherwise the
   // side still clears what was playing, as Anki's player does.

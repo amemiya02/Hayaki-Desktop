@@ -27,6 +27,7 @@ import {
   Palette,
   Play,
   Plus,
+  Puzzle,
   RefreshCw,
   ScrollText,
   Search,
@@ -66,6 +67,8 @@ import { useShortcutsSheet } from "./ShortcutsSheet";
 import { checkDatabase, checkMedia, createBackup, emptyCards } from "./Tools";
 import { openBackup } from "./Backups";
 import { useSync } from "@/lib/sync";
+import { invokeCommand, usePlugins } from "@/lib/plugins/host";
+import { tp } from "@/lib/strings/plugins";
 
 function flatten(node: DeckTreeNode | undefined, out: DeckTreeNode[] = []): DeckTreeNode[] {
   for (const child of node?.children ?? []) {
@@ -116,6 +119,7 @@ export function CommandPalette({ onSync }: { onSync: () => void }) {
   const prefs = usePrefs();
   const showExport = useExport((s) => s.show);
   const { data: undoStatus } = useUndoStatus(open);
+  const pluginCommands = usePlugins((s) => s.commands);
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
@@ -218,6 +222,20 @@ export function CommandPalette({ onSync }: { onSync: () => void }) {
                   ))}
                 </Group>
               )}
+              {pluginCommands.length > 0 && (
+                <Group heading={tp("title")}>
+                  {pluginCommands.map((c) => (
+                    <Item
+                      key={`${c.pluginId}:${c.id}`}
+                      value={`plugin ${c.pluginName} ${c.title} ${c.pluginId}:${c.id}`}
+                      icon={<Puzzle />}
+                      label={`${c.pluginName}: ${c.title}`}
+                      keys={c.shortcut ? [c.shortcut] : undefined}
+                      onSelect={run(() => invokeCommand(c))}
+                    />
+                  ))}
+                </Group>
+              )}
               <Group heading={t("palette.tools")}>
                 <Item icon={<Database />} label={tr("database-check-title")} onSelect={run(checkDatabase)} />
                 <Item icon={<Image />} label={tr("media-check-window-title")} onSelect={run(checkMedia)} />
@@ -225,6 +243,7 @@ export function CommandPalette({ onSync }: { onSync: () => void }) {
                 <Item icon={<Archive />} label={t("tools.createBackup")} onSelect={run(createBackup)} />
                 <Item icon={<FolderOpen />} label={trLabel("qt-accel-load-backup")} onSelect={run(openBackup)} />
                 <Item icon={<ScrollText />} label={tr("sync-media-log-title")} onSelect={run(() => useSync.getState().showLog(true))} />
+                <Item icon={<Puzzle />} label={tp("manage")} onSelect={run(() => go({ name: "plugins" }))} />
               </Group>
               <Group heading={t("settings.appearance")}>
                 {(["system", "light", "dark", "black"] as const).map((a) => (

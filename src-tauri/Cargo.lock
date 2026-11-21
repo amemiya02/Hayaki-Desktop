@@ -2097,6 +2097,7 @@ dependencies = [
 name = "hayaki"
 version = "0.1.0"
 dependencies = [
+ "ammonia",
  "anki",
  "anki_proto",
  "anki_proto_gen",
@@ -2108,6 +2109,7 @@ dependencies = [
  "percent-encoding",
  "prost",
  "prost-reflect",
+ "rand 0.9.4",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -2117,8 +2119,10 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
+ "tempfile",
  "tokio",
  "unicode-normalization",
+ "zip",
 ]
 
 [[package]]

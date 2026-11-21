@@ -235,6 +235,11 @@ pub fn request_close(app: &AppHandle) -> bool {
     true
 }
 
+/// Whether the interface answered the last request to close.
+pub fn interface_answered(app: &AppHandle) -> bool {
+    app.state::<Lifecycle>().acked.load(Ordering::SeqCst)
+}
+
 #[tauri::command]
 pub fn lifecycle_close_ack(lifecycle: State<'_, Lifecycle>) {
     lifecycle.acked.store(true, Ordering::SeqCst);

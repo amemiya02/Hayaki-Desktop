@@ -17,6 +17,9 @@ import { useApp } from "@/lib/session-store";
 import { td } from "@/lib/strings/decks";
 import { deckDragHandlers, useDeckDrag, useDropTarget } from "@/screens/decks/drag";
 import { MoveDeckDialog } from "@/screens/decks/MoveDeckDialog";
+import { runnable, usePlugins } from "@/lib/plugins/host";
+import { tp } from "@/lib/strings/plugins";
+import { panelIcon } from "@/screens/plugins/meta";
 import { TOP_LEVEL } from "@/screens/decks/model";
 
 function NavItem({
@@ -161,6 +164,34 @@ function DeckBranch({ node, depth, route, onMove }: { node: DeckTreeNode; depth:
   );
 }
 
+/** Panels of running plugins, as pages of their own (ADR 0004). */
+function PluginPanels({ route }: { route: Route }) {
+  const go = useNav((s) => s.go);
+  const installed = usePlugins((s) => s.installed);
+  const paused = usePlugins((s) => s.paused);
+  const panels = runnable(installed, paused).flatMap((p) =>
+    p.manifest!.permissions.includes("ui") ? p.manifest!.panels.map((panel) => ({ pluginId: p.id, panel })) : [],
+  );
+  if (panels.length === 0) return null;
+  return (
+    <>
+      <GroupLabel>{tp("title")}</GroupLabel>
+      {panels.map(({ pluginId, panel }) => {
+        const Icon = panelIcon(panel.icon);
+        return (
+          <NavItem
+            key={`${pluginId}:${panel.id}`}
+            icon={<Icon />}
+            label={panel.title}
+            active={route.name === "plugin" && route.pluginId === pluginId && route.panelId === panel.id}
+            onClick={() => go({ name: "plugin", pluginId, panelId: panel.id })}
+          />
+        );
+      })}
+    </>
+  );
+}
+
 export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: boolean }) {
   const route = useNav((s) => s.route);
   const go = useNav((s) => s.go);
@@ -206,6 +237,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
             </ul>
           </>
         )}
+        <PluginPanels route={route} />
       </div>
 
       <div className="flex items-center gap-1 border-t border-line px-2.5 py-2">

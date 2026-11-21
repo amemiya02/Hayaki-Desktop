@@ -20,6 +20,7 @@ import { BuryOrSuspendCardsRequest_Mode, ScheduleCardsAsNewRequest_Context } fro
 import { ConfigKey_String } from "../anki/proto/anki/config_pb";
 import { tr } from "../i18n";
 import { renderAnswer, renderCard, type RenderedCard } from "./render";
+import { emitReviewerEvent } from "./reviewer-events";
 import { DEFAULT_REVIEW_CONFIG, reviewConfigOf, reviewPrefsOf, type ReviewConfig, type ReviewPrefs } from "./review-config";
 import { timeboxReached, undoRevertedAnswer, type Timebox, type TimeboxReached } from "./review-flow";
 
@@ -169,6 +170,7 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
         canUndo,
         previousCardId: shownId !== null && shownId !== card.id ? shownId : get().previousCardId,
       });
+      emitReviewerEvent({ name: "reviewer.questionShown", cardId: card.id, noteId: card.noteId });
       void markedState(card.noteId).then((marked) => {
         if (get().queued?.card?.id === card.id) set({ marked });
       });
@@ -298,6 +300,8 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
       const answerHtml = await renderAnswer(rendered, typed);
       if (get().rendered !== rendered || get().phase !== "question") return;
       set({ phase: "answer", answerHtml, typed, revealedAt: performance.now() });
+      const shown = get().queued?.card;
+      if (shown) emitReviewerEvent({ name: "reviewer.answerShown", cardId: shown.id, noteId: shown.noteId });
     },
 
     async answer(rating) {
@@ -323,6 +327,7 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
         set({ phase: "answer" });
         throw error;
       }
+      emitReviewerEvent({ name: "reviewer.answered", cardId: card.id, noteId: card.noteId, ease: rating + 1 });
       const reps = answered + 1;
       set({ answered: reps });
       const leech = leechOutcome(card.id, newState);
