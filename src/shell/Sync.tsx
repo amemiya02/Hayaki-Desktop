@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { Button, cn, Dialog, Spinner, Switch, TextField } from "@/components/ui";
 import { languages, t, tr } from "@/lib/i18n";
+import { useNav } from "@/lib/nav";
 import { canAutoSync, onProfileClose } from "@/lib/lifecycle";
 import { useApp } from "@/lib/session-store";
 import { tl } from "@/lib/strings/lifecycle";
@@ -54,9 +55,15 @@ export function useSyncAction() {
       setSigningIn(true);
       return;
     }
-    const id = toast.loading(tr("sync-syncing"));
-    const unsubscribe = useSync.subscribe((s) => {
+    const id = `sync-${Date.now()}`;
+    // On the study route progress lives in the top bar, never over the Card.
+    const show = () => {
+      const s = useSync.getState();
       if (s.phase === "idle") return;
+      if (useNav.getState().route.name === "study") {
+        toast.dismiss(id);
+        return;
+      }
       const media = s.phase === "media";
       toast.loading(media ? t("sync.media") : tr("sync-syncing"), {
         id,
@@ -78,7 +85,16 @@ export function useSyncAction() {
             }
           : undefined,
       });
+    };
+    show();
+    const stopSync = useSync.subscribe(show);
+    const stopNav = useNav.subscribe((n, prev) => {
+      if (n.route.name !== prev.route.name) show();
     });
+    const unsubscribe = () => {
+      stopSync();
+      stopNav();
+    };
     const result = await sync(askFullSync).finally(unsubscribe);
     const state = useSync.getState();
     const clear = { action: undefined };

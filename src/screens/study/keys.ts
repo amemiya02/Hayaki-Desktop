@@ -95,7 +95,7 @@ export function commandFor(e: KeyLike, phase: Phase): StudyCommand | null {
   if (mod && e.altKey) return modAlt[e.code] ?? null;
   if (mod && e.shiftKey && e.code === "KeyD") return { id: "setDue" };
   if (mod && !e.shiftKey && e.code === "KeyZ") return { id: "undo" };
-  if (mod && /^Digit[0-7]$/.test(e.code)) return { id: "flag", flag: Number(e.code.slice(5)) };
+  if (mod && /^Digit[1-7]$/.test(e.code)) return { id: "flag", flag: Number(e.code.slice(5)) };
   if (mod && (e.key === "Delete" || e.key === "Backspace")) return { id: "deleteNote" };
   if (mod || e.altKey) return null;
 

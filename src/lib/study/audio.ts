@@ -23,6 +23,8 @@ export function cardPageUrl(): string {
 let generation = 0;
 let current: HTMLAudioElement | null = null;
 let speaking = false;
+/** The utterance `speaking` describes; a cancelled one's late events must not clear it. */
+let activeUtterance: SpeechSynthesisUtterance | null = null;
 /** Settles when the sound or speech now playing ends or is stopped. */
 let currentDone: Promise<void> = Promise.resolve();
 const idleListeners = new Set<() => void>();
@@ -37,6 +39,7 @@ function stopCurrent(): void {
   }
   if (speaking && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   speaking = false;
+  activeUtterance = null;
 }
 
 function notifyIdle(): void {
@@ -90,12 +93,16 @@ function speak(tag: TTSTag, token: number): Promise<void> {
       voices.find((v) => v.lang.toLowerCase() === utterance.lang.toLowerCase());
     if (voice) utterance.voice = voice;
     const finish = () => {
-      speaking = false;
+      if (activeUtterance === utterance) {
+        speaking = false;
+        activeUtterance = null;
+      }
       resolve();
     };
     utterance.onend = finish;
     utterance.onerror = finish;
     speaking = true;
+    activeUtterance = utterance;
     window.speechSynthesis.speak(utterance);
   });
   currentDone = done;

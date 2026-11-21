@@ -86,3 +86,8 @@ export function timeboxReached(timebox: Timebox, limitSecs: number, nowMs: numbe
   if ((nowMs - timebox.startedAt) / 1000 <= limitSecs) return null;
   return { cards: reps - timebox.startReps, minutes: Math.round(limitSecs / 60) };
 }
+
+/** Whether an undo reverted an answer, the only undo that gives back a rep (Anki never lowers reps otherwise). */
+export function undoRevertedAnswer(operation: string, answerOperation: string): boolean {
+  return operation === answerOperation;
+}

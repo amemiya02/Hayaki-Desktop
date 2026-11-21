@@ -7,7 +7,7 @@ import { DeckConfig_Config_AnswerAction, DeckConfig_Config_QuestionAction, DeckC
 import { create } from "@bufbuild/protobuf";
 
 import { AnswerAction, DEFAULT_REVIEW_CONFIG, QuestionAction, reviewConfigOf, reviewPrefsOf } from "./review-config";
-import { autoAdvanceStep, readTimer, timeboxReached } from "./review-flow";
+import { autoAdvanceStep, readTimer, timeboxReached, undoRevertedAnswer } from "./review-flow";
 import { renderAnswer, type RenderedCard } from "./render";
 
 describe("answer timer", () => {
@@ -132,5 +132,13 @@ describe("play buttons", () => {
 
   it("removes the sound references when play buttons are hidden", async () => {
     expect(await renderAnswer(rendered(true), null)).toBe("Back ");
+  });
+});
+
+describe("undo", () => {
+  it("gives back a rep only when the undone operation was an answer", () => {
+    expect(undoRevertedAnswer("Answer Card", "Answer Card")).toBe(true);
+    expect(undoRevertedAnswer("Update Tag", "Answer Card")).toBe(false);
+    expect(undoRevertedAnswer("", "Answer Card")).toBe(false);
   });
 });

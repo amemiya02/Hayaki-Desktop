@@ -18,9 +18,10 @@ import { CardAnswer_Rating } from "../anki/proto/anki/scheduler_pb";
 import type { QueuedCards_QueuedCard, SchedulingState } from "../anki/proto/anki/scheduler_pb";
 import { BuryOrSuspendCardsRequest_Mode, ScheduleCardsAsNewRequest_Context } from "../anki/proto/anki/scheduler_pb";
 import { ConfigKey_String } from "../anki/proto/anki/config_pb";
+import { tr } from "../i18n";
 import { renderAnswer, renderCard, type RenderedCard } from "./render";
 import { DEFAULT_REVIEW_CONFIG, reviewConfigOf, reviewPrefsOf, type ReviewConfig, type ReviewPrefs } from "./review-config";
-import { timeboxReached, type Timebox, type TimeboxReached } from "./review-flow";
+import { timeboxReached, undoRevertedAnswer, type Timebox, type TimeboxReached } from "./review-flow";
 
 export type Phase = "loading" | "question" | "answer" | "timebox" | "finished";
 
@@ -324,14 +325,14 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
       }
       const reps = answered + 1;
       set({ answered: reps });
-      const outcome = await leechOutcome(card.id, newState);
+      const leech = leechOutcome(card.id, newState);
       const reached = timeboxReached(get().timebox, get().prefs.timeLimitSecs, Date.now(), reps);
       if (reached) {
         set({ phase: "timebox", timeboxNotice: reached });
       } else {
         await load();
       }
-      return outcome;
+      return leech;
     },
 
     async continueAfterTimebox() {
@@ -341,14 +342,23 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
     },
 
     async undo() {
+      let undone;
       try {
-        await core.undo(ORIGIN);
+        undone = await core.undo(ORIGIN);
       } catch {
         return;
       }
       prerendered = null;
-      set({ answered: Math.max(0, get().answered - 1), timeboxNotice: null });
-      await load();
+      if (undoRevertedAnswer(undone.operation, tr("actions-answer-card"))) {
+        set({ answered: Math.max(0, get().answered - 1), timeboxNotice: null });
+        await load();
+      } else if (undone.changes?.studyQueues) {
+        set({ timeboxNotice: null });
+        await load();
+      } else {
+        // A flag, mark or edit: the Card and the side being read stay as they are.
+        await get().redraw();
+      }
     },
 
     async setFlag(flag) {

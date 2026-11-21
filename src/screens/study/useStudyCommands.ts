@@ -166,7 +166,7 @@ export function useStudyCommands({ reveal, openDialog, openMenu }: Hooks) {
           openDialog({ kind: "forget" });
           return;
         case "createCopy":
-          void openAddCopy(card.noteId, card.originalDeckId || card.deckId);
+          openAddCopy(card.noteId, card.originalDeckId || card.deckId).catch((error: unknown) => toast.error(String(error)));
           return;
       }
     },

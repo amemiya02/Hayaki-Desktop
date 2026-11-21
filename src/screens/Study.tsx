@@ -7,11 +7,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CardFrame, type CardFrameContent, type CardFrameHandle, type ForwardedKey } from "@/components/CardFrame";
-import { Button, cn, IconButton, Kbd, onAccentKbd, Tooltip } from "@/components/ui";
+import { Button, cn, IconButton, Kbd, onAccentKbd, Spinner, Tooltip } from "@/components/ui";
 import { QueuedCards_Queue } from "@/lib/anki/proto/anki/scheduler_pb";
 import { onCollectionChange } from "@/lib/anki/transport";
 import { direction, firstLanguage, t, tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
+import { useSync } from "@/lib/sync";
 import { cardFrameVars, usePrefs } from "@/lib/prefs";
 import { tstudy } from "@/lib/strings/study";
 import { useResolvedAppearance } from "@/lib/useAppearance";
@@ -60,6 +61,28 @@ function StudyCounts() {
         </span>
       ))}
     </div>
+  );
+}
+
+/** Sync progress lives here while studying, as on Anki's toolbar, never over the Card. */
+function SyncIndicator() {
+  const phase = useSync((s) => s.phase);
+  const progress = useSync((s) => s.progress);
+  if (phase === "idle") return null;
+  const full = progress.length ? progress.join(" · ") : phase === "media" ? tr("sync-media-starting") : tr("sync-syncing");
+  const short = phase === "media" && progress.length ? progress[0] : tr("sync-syncing");
+  return (
+    <Tooltip content={full}>
+      <button
+        type="button"
+        aria-label={full}
+        onClick={() => useSync.getState().showLog(true)}
+        className="me-1 flex h-7 items-center gap-1.5 rounded-[7px] px-2 text-caption tabular-nums text-ink-2 transition-colors duration-[var(--dur-fast)] hover:bg-sidebar-hover"
+      >
+        <Spinner className="size-3.5" />
+        <span className="max-w-40 truncate">{short}</span>
+      </button>
+    </Tooltip>
   );
 }
 
@@ -177,6 +200,8 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
+      // Radix already used this key, such as Escape closing a dialog or menu.
+      if (e.defaultPrevented) return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       if (document.querySelector("[role=menu], [role=dialog]")) return;
@@ -220,6 +245,7 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
         <div className="ml-auto flex items-center gap-0.5">
           <AutoAdvanceBadge onTurnOff={() => run({ id: "toggleAutoAdvance" })} />
           <AnswerTimer />
+          <SyncIndicator />
           {s.marked && <Star className="me-1 size-4 fill-marked text-marked" aria-label={tr("studying-mark-note")} />}
           {s.flag > 0 && <Flag className="mr-1 size-4" style={{ color: flagColors[s.flag], fill: flagColors[s.flag] }} aria-label={flagNames()[s.flag]} />}
           <IconButton label={`${tr("actions-replay-audio")} (R)`} onClick={replayAudio}>
