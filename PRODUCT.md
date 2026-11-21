@@ -63,7 +63,9 @@ Success means:
 
 **Languages:** English, Simplified Chinese and Japanese are first-class. Other locales use the Engine's translations where they exist and English otherwise.
 
-**Undecided:** distribution (signing, stores, auto-update), and whether add-on-like extension points ever exist.
+**Extensions (owner decision, 2026-11-21):** sandboxed JavaScript plugins with declared permissions, installed from a local folder or `.zip` (ADR 0004), and a built-in AnkiConnect-compatible server that is off by default. Python add-ons still do not run.
+
+**Undecided:** distribution (signing, stores, auto-update), and installing plugins from a URL or a catalogue.
 
 ## Brand Commitments
 
