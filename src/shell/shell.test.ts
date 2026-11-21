@@ -10,7 +10,7 @@ import { SHORTCUTS } from "@/screens/browse/keys";
 import { EDITOR_MIN, editorWidth, gridTemplate } from "@/screens/browse/store";
 
 import { isWebViewAccelerator } from "./accelerators";
-import { filterSections, SECTIONS, splitChord, type ResolvedSection } from "./shortcuts";
+import { displayChord, filterSections, SECTIONS, splitChord, type ResolvedSection } from "./shortcuts";
 
 describe("window material", () => {
   it("reads the platform from the user agent", () => {
@@ -145,5 +145,14 @@ describe("web view accelerators", () => {
     expect(isWebViewAccelerator(key("ArrowLeft"), false)).toBe(false);
     expect(isWebViewAccelerator(key("ArrowLeft", { ctrlKey: true, altKey: true }), false)).toBe(false);
     expect(isWebViewAccelerator(key("z", { ctrlKey: true }), false)).toBe(false);
+  });
+});
+
+describe("displayChord", () => {
+  it("writes chords with macOS symbols there and unchanged elsewhere", () => {
+    expect(displayChord("Ctrl+F", true)).toBe("\u2318F");
+    expect(displayChord("Ctrl+Shift+I", true)).toBe("\u21E7\u2318I");
+    expect(displayChord("Ctrl+\\", true)).toBe("\u2318\\");
+    expect(displayChord("Ctrl+Shift+I", false)).toBe("Ctrl+Shift+I");
   });
 });

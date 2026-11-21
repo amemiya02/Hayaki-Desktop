@@ -15,6 +15,7 @@ import { create } from "zustand";
 import { Button, cn, Dialog, Kbd, Spinner, TextField } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
 import { t, tr, trLabel } from "@/lib/i18n";
+import { displayChord } from "./shortcuts";
 import { useNav } from "@/lib/nav";
 import { ts } from "@/lib/strings/shell";
 
@@ -101,6 +102,8 @@ function StudyDeckDialog({ onClose }: { onClose: () => void }) {
   const startAdding = () => setAdding(newDeckDefault(names, row, filter));
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    // Enter that confirms an IME candidate must not act on the field.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (adding !== null) {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -165,7 +168,7 @@ function StudyDeckDialog({ onClose }: { onClose: () => void }) {
           <Button onClick={startAdding} className="me-auto" disabled={busy || decks.isPending} title={tr("decks-add-new-deck-ctrlandn")}>
             <Plus />
             {tr("actions-add")}
-            <Kbd>Ctrl N</Kbd>
+            <Kbd>{displayChord("Ctrl+N")}</Kbd>
           </Button>
           <Button onClick={onClose}>{tr("actions-cancel")}</Button>
           <Button variant="primary" onClick={() => void study(shown[row])} disabled={busy || shown.length === 0}>

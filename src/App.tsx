@@ -20,6 +20,8 @@ import { DeckOverview } from "@/screens/DeckOverview";
 import { DecksScreen } from "@/screens/Decks";
 
 import { StudyScreen } from "@/screens/Study";
+import { displayChord } from "@/shell/shortcuts";
+import { applyStoredZoom } from "@/shell/zoom";
 import { Sidebar } from "@/shell/Sidebar";
 import { useSyncAction } from "@/shell/Sync";
 import { CommandPalette } from "@/shell/CommandPalette";
@@ -104,7 +106,7 @@ function Toolbar() {
 
   return (
     <header className="flex h-[52px] shrink-0 items-center gap-3 border-b border-line ps-3 pe-5">
-      <IconButton label={`${collapsed ? ts("showSidebar") : ts("hideSidebar")} (Ctrl+\\)`} aria-pressed={!collapsed} onClick={toggleSidebar}>
+      <IconButton label={`${collapsed ? ts("showSidebar") : ts("hideSidebar")} (${displayChord("Ctrl+\\")})`} aria-pressed={!collapsed} onClick={toggleSidebar}>
         <PanelLeft />
       </IconButton>
       <h1 className="me-auto min-w-0 truncate text-title font-semibold text-ink">{routeTitle(route)}</h1>
@@ -128,9 +130,9 @@ function Toolbar() {
           aria-label={tr("actions-search")}
           className="border-transparent bg-surface-2 ps-8 pe-8 hover:border-line"
         />
-        <Kbd className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2">Ctrl F</Kbd>
+        <Kbd className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2">{displayChord("Ctrl+F")}</Kbd>
       </form>
-      <Button onClick={() => void importPackage()} title={`${t("decks.import")} (Ctrl+Shift+I)`}>
+      <Button onClick={() => void importPackage()} title={`${t("decks.import")} (${displayChord("Ctrl+Shift+I")})`}>
         <Download />
         {t("decks.import")}
       </Button>
@@ -427,7 +429,8 @@ export function App() {
     void useApp.getState().boot();
     // Passive effects run after the first paint, so the window shows in the right colours.
     // Not inside requestAnimationFrame: WKWebView on macOS never fires it for a hidden window.
-    void getCurrentWindow().show();
+    // The stored zoom lands first so the window never shows at 100%.
+    void applyStoredZoom().finally(() => getCurrentWindow().show());
   }, []);
 
   return (

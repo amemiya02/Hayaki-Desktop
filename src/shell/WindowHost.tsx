@@ -15,8 +15,8 @@ import { useApp } from "@/lib/session-store";
 
 import { openStudyDeck, StudyDeckHost } from "./StudyDeck";
 import { runRedo, runUndo } from "./undo";
-import { chordAction, type KeyLike } from "./window-keys";
-import { applyStoredZoom, zoom } from "./zoom";
+import { chordAction, chordAppliesOnRoute, type KeyLike } from "./window-keys";
+import { zoom } from "./zoom";
 
 export async function toggleFullscreen(): Promise<void> {
   try {
@@ -34,7 +34,8 @@ function isTyping(target: EventTarget | null): boolean {
 
 /**
  * Runs the chord when it applies here and says whether it did. Study keeps
- * its own Undo (it rebuilds the queue) and Browse keeps all of its own.
+ * its own Undo (it rebuilds the queue); undo and redo run only on the screens
+ * in `UNDO_ROUTES` and `REDO_ROUTES`.
  */
 export function handleWindowChord(e: KeyLike, target: EventTarget | null = null): boolean {
   const action = chordAction(e);
@@ -60,11 +61,11 @@ export function handleWindowChord(e: KeyLike, target: EventTarget | null = null)
       openStudyDeck();
       return true;
     case "undo":
-      if (blocked || route === "study" || route === "browse" || route === "add") return false;
+      if (blocked || !chordAppliesOnRoute("undo", route)) return false;
       void runUndo();
       return true;
     case "redo":
-      if (blocked || route === "browse" || route === "add") return false;
+      if (blocked || !chordAppliesOnRoute("redo", route)) return false;
       void runRedo();
       return true;
   }
@@ -72,7 +73,6 @@ export function handleWindowChord(e: KeyLike, target: EventTarget | null = null)
 
 export function WindowHost() {
   useEffect(() => {
-    void applyStoredZoom();
     // Capture phase: Ctrl+Cmd+F must not also reach the toolbar's Ctrl+F.
     const listener = (e: KeyboardEvent) => {
       if (handleWindowChord(e, e.target)) {

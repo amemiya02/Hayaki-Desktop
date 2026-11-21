@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chordAction, type KeyLike } from "./window-keys";
+import { chordAction, chordAppliesOnRoute, type KeyLike } from "./window-keys";
 
 const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({ key: k, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...mods });
 
@@ -30,5 +30,23 @@ describe("window chords", () => {
     expect(chordAction(key("/"))).toBe("studyDeck");
     expect(chordAction(key("/", { ctrlKey: true }))).toBeNull();
     expect(chordAction(key("?", { shiftKey: true }))).toBeNull();
+  });
+});
+
+describe("undo and redo routes", () => {
+  it("apply on decks, deck overview and stats only", () => {
+    for (const route of ["decks", "deck", "stats"]) {
+      expect(chordAppliesOnRoute("undo", route)).toBe(true);
+      expect(chordAppliesOnRoute("redo", route)).toBe(true);
+    }
+    for (const route of ["image-occlusion", "deck-options", "notetype", "notetypes", "change-notetype", "import-csv", "settings", "browse", "add"]) {
+      expect(chordAppliesOnRoute("undo", route)).toBe(false);
+      expect(chordAppliesOnRoute("redo", route)).toBe(false);
+    }
+  });
+
+  it("leaves Study's undo to Study but redoes there", () => {
+    expect(chordAppliesOnRoute("undo", "study")).toBe(false);
+    expect(chordAppliesOnRoute("redo", "study")).toBe(true);
   });
 });

@@ -28,3 +28,15 @@ export function chordAction(e: KeyLike): ChordAction | null {
   if (e.key === "/" && !mod && !e.altKey) return "studyDeck";
   return null;
 }
+
+/**
+ * The screens where the window's own Undo and Redo apply. Every other screen
+ * either handles the keys itself (Study, Browse, Add, Image Occlusion) or holds
+ * unsaved local state that a collection undo would pull out from under it.
+ */
+export const UNDO_ROUTES: readonly string[] = ["decks", "deck", "stats"];
+export const REDO_ROUTES: readonly string[] = [...UNDO_ROUTES, "study"];
+
+export function chordAppliesOnRoute(action: "undo" | "redo", route: string): boolean {
+  return (action === "undo" ? UNDO_ROUTES : REDO_ROUTES).includes(route);
+}

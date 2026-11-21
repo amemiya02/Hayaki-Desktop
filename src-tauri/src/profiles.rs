@@ -375,10 +375,20 @@ pub fn open_profile(core: &Core, session: &Session, profile: OpenProfile) -> Res
 /// Restarts the core in other interface languages, reopening the open
 /// collection afterwards, in the old core if the new one fails to start.
 pub fn change_langs(core: &Core, session: &Session, langs: Vec<String>) -> Result<(), String> {
+    use anki::services::BackendSyncService;
+    // A sync still running would hold the collection open.
+    let backend = core.backend();
+    let _ = backend.abort_sync();
+    let _ = backend.abort_media_sync();
     let held = session.hold();
     let reopen = held.current();
     held.close(core, OnClose::Reopen);
+    let previous = core.langs();
     let replaced = core.replace(langs).map_err(|err| err.to_string());
+    if replaced.is_err() {
+        // Never leave the app with no collection: go back to the old language.
+        let _ = core.replace(previous);
+    }
     if let Some(profile) = reopen {
         held.open(core, profile)?;
     }

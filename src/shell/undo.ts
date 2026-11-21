@@ -39,6 +39,8 @@ function message(error: unknown): string {
 export async function runUndo(): Promise<void> {
   try {
     const out = await core.undo();
+    // The review queue was built before the step came back.
+    if (useNav.getState().route.name === "study") await useSession.getState().reload();
     toast(tr("undo-action-undone", { action: out.operation }));
   } catch {
     toast(tr("actions-nothing-to-undo"));

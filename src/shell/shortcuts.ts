@@ -7,6 +7,7 @@
  * few Hayaki adds. Labels are functions so they read the loaded language.
  */
 import { t, tr, trLabel } from "@/lib/i18n";
+import { platformOf } from "@/lib/useAppearance";
 import { ts } from "@/lib/strings/shell";
 import { SHORTCUTS, type ActionId } from "@/screens/browse/keys";
 import { STUDY_SHEET_ITEMS } from "@/screens/study/shortcut-items";
@@ -33,6 +34,21 @@ export function splitChord(chord: string): string[] {
     else if (parts[i] !== "") out.push(parts[i]);
   }
   return out;
+}
+
+/** A chord as this platform writes it: `Ctrl+Shift+I` is `⇧⌘I` on macOS (Ctrl is the Command key there). */
+export function displayChord(chord: string, mac: boolean = isMacPlatform()): string {
+  if (!mac) return chord;
+  const keys = splitChord(chord);
+  const mods = ["Alt", "Shift", "Ctrl"].filter((m) => keys.includes(m));
+  const glyph: Record<string, string> = { Alt: "\u2325", Shift: "\u21E7", Ctrl: "\u2318" };
+  const rest = keys.filter((k) => !mods.includes(k));
+  const ordered = mods.map((m) => glyph[m]);
+  return [...ordered, ...rest].join("");
+}
+
+export function isMacPlatform(): boolean {
+  return typeof navigator !== "undefined" && platformOf(navigator.userAgent) === "mac";
 }
 
 /**
