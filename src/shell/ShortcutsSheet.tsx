@@ -13,7 +13,7 @@ import { useNav } from "@/lib/nav";
 import { ts } from "@/lib/strings/shell";
 
 import { openManual } from "./help";
-import { filterSections, resolveSections, splitChord, type ResolvedSection } from "./shortcuts";
+import { filterSections, displayKeys, resolveSections, type ResolvedSection } from "./shortcuts";
 
 export const useShortcutsSheet = create<{ open: boolean; toggle(): void; show(): void; hide(): void }>((set) => ({
   open: false,
@@ -46,7 +46,7 @@ function leadSection(route: string): ResolvedSection["id"] {
 function Chord({ chord }: { chord: string }) {
   return (
     <span className="inline-flex items-center gap-0.5">
-      {splitChord(chord).map((key, i) => (
+      {displayKeys(chord).map((key, i) => (
         <Kbd key={i} className="h-5 min-w-5 px-1.5 text-caption">
           {key}
         </Kbd>

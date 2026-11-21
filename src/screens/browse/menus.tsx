@@ -10,6 +10,7 @@ import { ContextMenu } from "radix-ui";
 import type { ReactNode } from "react";
 
 import { cn } from "@/components/ui";
+import { displayChord } from "@/lib/chord";
 
 const surface =
   "z-50 min-w-[220px] rounded-[10px] border border-line bg-raised p-1 shadow-pop " +
@@ -52,7 +53,7 @@ export function CtxItem({
       className={cn(item, danger && "text-danger [&_svg]:text-danger")}
     >
       {children}
-      {shortcut && <span className="ml-auto pl-6 text-caption text-ink-3">{shortcut}</span>}
+      {shortcut && <span className="tabular ms-auto ps-6 text-caption text-ink-3">{displayChord(shortcut)}</span>}
     </ContextMenu.Item>
   );
 }
@@ -62,11 +63,13 @@ export function CtxCheck({
   checked,
   onSelect,
   shortcut,
+  icon,
 }: {
   children: ReactNode;
   checked: boolean;
   onSelect: () => void;
   shortcut?: string;
+  icon?: ReactNode;
 }) {
   return (
     <ContextMenu.CheckboxItem
@@ -75,13 +78,28 @@ export function CtxCheck({
         e.preventDefault();
         onSelect();
       }}
-      className={cn(item, "pl-8")}
+      className={cn(item, !icon && "ps-8")}
     >
-      <ContextMenu.ItemIndicator className="absolute left-2.5 inline-flex">
-        <Check />
-      </ContextMenu.ItemIndicator>
-      {children}
-      {shortcut && <span className="ml-auto pl-6 text-caption text-ink-3">{shortcut}</span>}
+      {icon ? (
+        <>
+          {icon}
+          {children}
+          {shortcut && <span className="tabular ms-auto ps-6 text-caption text-ink-3">{displayChord(shortcut)}</span>}
+          <span className={cn("grid size-4 shrink-0 place-items-center", shortcut ? "ms-2" : "ms-auto")}>
+            <ContextMenu.ItemIndicator className="inline-flex">
+              <Check />
+            </ContextMenu.ItemIndicator>
+          </span>
+        </>
+      ) : (
+        <>
+          <ContextMenu.ItemIndicator className="absolute start-2.5 inline-flex">
+            <Check />
+          </ContextMenu.ItemIndicator>
+          {children}
+          {shortcut && <span className="tabular ms-auto ps-6 text-caption text-ink-3">{displayChord(shortcut)}</span>}
+        </>
+      )}
     </ContextMenu.CheckboxItem>
   );
 }
@@ -100,7 +118,7 @@ export function CtxSub({ label, icon, children }: { label: string; icon?: ReactN
       <ContextMenu.SubTrigger className={cn(item, "data-[state=open]:bg-accent-soft")}>
         {icon}
         {label}
-        <ChevronRight className="ml-auto" />
+        <ChevronRight className="ms-auto rtl:rotate-180" />
       </ContextMenu.SubTrigger>
       <ContextMenu.Portal>
         <ContextMenu.SubContent sideOffset={4} className={surface}>

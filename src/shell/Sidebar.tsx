@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
 
 import { cn, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, motionTokens } from "@/components/ui";
+import { withChord } from "@/lib/chord";
 import * as core from "@/lib/anki/generated/core";
 import type { DeckTreeNode } from "@/lib/anki/proto/anki/decks_pb";
 import { SetDeckCollapsedRequest_Scope } from "@/lib/anki/proto/anki/decks_pb";
@@ -233,11 +234,11 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
             </MenuItem>
           </MenuContent>
         </Menu>
-        <IconButton label={`${t("nav.sync")} (Y)`} size="sm" onClick={onSync} disabled={syncing}>
+        <IconButton label={withChord(t("nav.sync"), "Y")} size="sm" onClick={onSync} disabled={syncing}>
           <RefreshCw className={cn(syncing && "animate-spin")} />
         </IconButton>
         <IconButton
-          label={`${t("nav.settings")} (Ctrl+P)`}
+          label={withChord(t("nav.settings"), "Ctrl+P")}
           size="sm"
           onClick={() => go({ name: "settings" })}
           className={cn(route.name === "settings" && "bg-accent-soft text-accent-ink")}

@@ -19,7 +19,7 @@ import {
   PauseCircle,
   Pencil,
   Rewind,
-  RotateCcw,
+  Volume2,
   Settings2,
   Star,
   Trash2,
@@ -27,6 +27,7 @@ import {
 import type { ReactNode } from "react";
 
 import { IconButton, Menu, MenuCheckItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger, SubMenu } from "@/components/ui";
+import { withChord } from "@/lib/chord";
 import { t, tr } from "@/lib/i18n";
 import { useSession } from "@/lib/study/session";
 
@@ -62,7 +63,7 @@ export function StudyMenu({ open, onOpenChange, run }: { open: boolean; onOpenCh
   return (
     <Menu open={open} onOpenChange={onOpenChange}>
       <MenuTrigger asChild>
-        <IconButton label={`${t("study.more")} (${STUDY_KEYS.menu})`}>
+        <IconButton label={withChord(t("study.more"), STUDY_KEYS.menu)}>
           <MoreHorizontal />
         </IconButton>
       </MenuTrigger>
@@ -92,7 +93,7 @@ export function StudyMenu({ open, onOpenChange, run }: { open: boolean; onOpenCh
         {item({ id: "createCopy" }, ellipsis("actions-create-copy"), <Copy />, STUDY_KEYS.createCopy)}
         {item({ id: "deleteNote" }, tr("studying-delete-note"), <Trash2 />, "Ctrl+Del", { danger: true })}
         <MenuSeparator />
-        {item({ id: "replay" }, tr("actions-replay-audio"), <RotateCcw />, "R")}
+        {item({ id: "replay" }, tr("actions-replay-audio"), <Volume2 />, "R")}
         {item({ id: "pauseAudio" }, tr("studying-pause-audio"), <Pause />, STUDY_KEYS.pauseAudio, { disabled: false })}
         {item({ id: "seek", secs: -SEEK_SECS }, tr("studying-audio-5s"), <Rewind />, STUDY_KEYS.seekBack, { disabled: false })}
         {item({ id: "seek", secs: SEEK_SECS }, tr("studying-audio-and5s"), <FastForward />, STUDY_KEYS.seekForward, { disabled: false })}

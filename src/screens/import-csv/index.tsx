@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import { TagEditor } from "@/components/editor/TagEditor";
 import { Button, cn, Kbd, Spinner } from "@/components/ui";
+import { displayChord, withChord } from "@/lib/chord";
 import * as core from "@/lib/anki/generated/core";
 import type { DeckNameId } from "@/lib/anki/proto/anki/decks_pb";
 import {
@@ -268,9 +269,9 @@ export function ImportCsvScreen({ path }: { path: string }) {
         </p>
       </div>
       {phase.name === "options" && (
-        <Button variant="primary" disabled={refreshing || !meta} onClick={() => void run()} title={`${tr("actions-import")} (Ctrl+Enter)`}>
+        <Button variant="primary" disabled={refreshing || !meta} onClick={() => void run()} title={withChord(tr("actions-import"), "Ctrl+Enter")}>
           {tr("actions-import")}
-          <Kbd className="border-transparent bg-[color-mix(in_oklab,var(--on-accent)_18%,transparent)] text-on-accent">Ctrl+Enter</Kbd>
+          <Kbd className="border-transparent bg-[color-mix(in_oklab,var(--on-accent)_18%,transparent)] text-on-accent">{displayChord("Ctrl+Enter")}</Kbd>
         </Button>
       )}
       {phase.name === "done" && (

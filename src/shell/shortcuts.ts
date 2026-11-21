@@ -7,7 +7,7 @@
  * few Hayaki adds. Labels are functions so they read the loaded language.
  */
 import { t, tr, trLabel } from "@/lib/i18n";
-import { platformOf } from "@/lib/useAppearance";
+import { isMacPlatform } from "@/lib/chord";
 import { ts } from "@/lib/strings/shell";
 import { SHORTCUTS, type ActionId } from "@/screens/browse/keys";
 import { STUDY_SHEET_ITEMS } from "@/screens/study/shortcut-items";
@@ -24,32 +24,10 @@ export interface ShortcutSection {
   items: ShortcutItem[];
 }
 
-/** The keys of one chord, such as `Ctrl+Shift+D` → `Ctrl`, `Shift`, `D` (a lone `+` survives). */
-export function splitChord(chord: string): string[] {
-  if (chord === "+") return ["+"];
-  const parts = chord.split("+");
-  const out: string[] = [];
-  for (let i = 0; i < parts.length; i++) {
-    if (parts[i] === "" && i === parts.length - 1) out.push("+");
-    else if (parts[i] !== "") out.push(parts[i]);
-  }
-  return out;
-}
+export { displayChord, displayKeys, isMacPlatform, splitChord, withChord } from "@/lib/chord";
 
-/** A chord as this platform writes it: `Ctrl+Shift+I` is `⇧⌘I` on macOS (Ctrl is the Command key there). */
-export function displayChord(chord: string, mac: boolean = isMacPlatform()): string {
-  if (!mac) return chord;
-  const keys = splitChord(chord);
-  const mods = ["Alt", "Shift", "Ctrl"].filter((m) => keys.includes(m));
-  const glyph: Record<string, string> = { Alt: "\u2325", Shift: "\u21E7", Ctrl: "\u2318" };
-  const rest = keys.filter((k) => !mods.includes(k));
-  const ordered = mods.map((m) => glyph[m]);
-  return [...ordered, ...rest].join("");
-}
-
-export function isMacPlatform(): boolean {
-  return typeof navigator !== "undefined" && platformOf(navigator.userAgent) === "mac";
-}
+/** The macOS-only chord for full screen, where Control is a real Control key. */
+export const MAC_FULLSCREEN_CHORD = "Ctrl+Cmd+F";
 
 /**
  * The app-wide chords, shared by the shortcuts sheet and the command palette
@@ -177,7 +155,7 @@ export const SECTIONS: ShortcutSection[] = [
       { label: () => trLabel("qt-accel-switch-profile"), keys: [...GLOBAL_KEYS.switchProfile] },
       { label: () => trLabel("qt-accel-preferences"), keys: [...GLOBAL_KEYS.preferences] },
       { label: () => ts("showShortcuts"), keys: [...GLOBAL_KEYS.shortcuts] },
-      { label: () => trLabel("qt-accel-full-screen"), keys: [...GLOBAL_KEYS.fullscreen, "Ctrl+Cmd+F"] },
+      { label: () => trLabel("qt-accel-full-screen"), keys: [...GLOBAL_KEYS.fullscreen, MAC_FULLSCREEN_CHORD] },
       { label: () => trLabel("qt-accel-zoom-in"), keys: [...GLOBAL_KEYS.zoomIn] },
       { label: () => trLabel("qt-accel-zoom-out"), keys: [...GLOBAL_KEYS.zoomOut] },
       { label: () => trLabel("qt-accel-reset-zoom"), keys: [...GLOBAL_KEYS.zoomReset] },
@@ -275,6 +253,10 @@ export function filterSections(sections: ResolvedSection[], query: string): Reso
     .filter((section) => section.items.length > 0);
 }
 
-export function resolveSections(sections: ShortcutSection[] = SECTIONS): ResolvedSection[] {
-  return sections.map((s) => ({ id: s.id, title: s.title(), items: s.items.map((i) => ({ label: i.label(), keys: i.keys })) }));
+export function resolveSections(sections: ShortcutSection[] = SECTIONS, mac: boolean = isMacPlatform()): ResolvedSection[] {
+  return sections.map((s) => ({
+    id: s.id,
+    title: s.title(),
+    items: s.items.map((i) => ({ label: i.label(), keys: mac ? i.keys : i.keys.filter((k) => k !== MAC_FULLSCREEN_CHORD) })),
+  }));
 }

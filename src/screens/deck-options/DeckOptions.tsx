@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { toast } from "sonner";
 
 import { Button, cn, Dialog, IconButton, Kbd, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, Spinner, TextField } from "@/components/ui";
+import { displayChord, withChord } from "@/lib/chord";
 import * as core from "@/lib/anki/generated/core";
 import type { ComputeParamsProgress } from "@/lib/anki/proto/anki/collection_pb";
 import { tr, t } from "@/lib/i18n";
@@ -313,10 +314,10 @@ export function DeckOptionsScreen({ deckId }: { deckId: bigint }) {
           variant="primary"
           disabled={!dirty || !!saving}
           onClick={() => void save(UpdateDeckConfigsMode.NORMAL)}
-          title={`${tr("deck-config-save-button")} (Ctrl+Enter)`}
+          title={withChord(tr("deck-config-save-button"), "Ctrl+Enter")}
         >
           {tr("deck-config-save-button")}
-          <Kbd className="border-transparent bg-[color-mix(in_oklab,var(--on-accent)_18%,transparent)] text-on-accent">Ctrl+Enter</Kbd>
+          <Kbd className="border-transparent bg-[color-mix(in_oklab,var(--on-accent)_18%,transparent)] text-on-accent">{displayChord("Ctrl+Enter")}</Kbd>
         </Button>
       </footer>
 

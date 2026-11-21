@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { CardFrame, type CardFrameContent, type CardFrameHandle, type ForwardedKey } from "@/components/CardFrame";
 import { Button, cn, IconButton, Kbd, onAccentKbd, Spinner, Tooltip } from "@/components/ui";
+import { withChord } from "@/lib/chord";
 import { QueuedCards_Queue } from "@/lib/anki/proto/anki/scheduler_pb";
 import { onCollectionChange } from "@/lib/anki/transport";
 import { direction, firstLanguage, t, tr } from "@/lib/i18n";
@@ -91,7 +92,7 @@ function AutoAdvanceBadge({ onTurnOff }: { onTurnOff: () => void }) {
   const on = useSession((s) => s.autoAdvance);
   if (!on) return null;
   return (
-    <Tooltip content={`${tstudy("autoAdvanceOn")} (${STUDY_KEYS.toggleAutoAdvance})`}>
+    <Tooltip content={withChord(tstudy("autoAdvanceOn"), STUDY_KEYS.toggleAutoAdvance)}>
       <button
         type="button"
         aria-pressed
@@ -242,16 +243,16 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
             <StudyCounts />
           </div>
         )}
-        <div className="ml-auto flex items-center gap-0.5">
+        <div className="ms-auto flex items-center gap-0.5">
           <AutoAdvanceBadge onTurnOff={() => run({ id: "toggleAutoAdvance" })} />
           <AnswerTimer />
           <SyncIndicator />
           {s.marked && <Star className="me-1 size-4 fill-marked text-marked" aria-label={tr("studying-mark-note")} />}
-          {s.flag > 0 && <Flag className="mr-1 size-4" style={{ color: flagColors[s.flag], fill: flagColors[s.flag] }} aria-label={flagNames()[s.flag]} />}
+          {s.flag > 0 && <Flag className="me-1 size-4" style={{ color: flagColors[s.flag], fill: flagColors[s.flag] }} aria-label={flagNames()[s.flag]} />}
           <IconButton label={`${tr("actions-replay-audio")} (R)`} onClick={replayAudio}>
             <Volume2 />
           </IconButton>
-          <IconButton label={`${t("study.undo")} (Ctrl+Z)`} disabled={!s.canUndo} onClick={() => void s.undo()}>
+          <IconButton label={withChord(t("study.undo"), "Ctrl+Z")} disabled={!s.canUndo} onClick={() => void s.undo()}>
             <Undo2 />
           </IconButton>
           <StudyMenu open={menuOpen} onOpenChange={setMenuOpen} run={run} />

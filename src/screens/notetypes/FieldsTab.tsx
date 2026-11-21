@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { confirm } from "@/components/confirm";
 import { Button, cn, IconButton, NumberField, TextField } from "@/components/ui";
+import { displayChord, withChord } from "@/lib/chord";
 import type { Notetype } from "@/lib/anki/proto/anki/notetypes_pb";
 import { tr } from "@/lib/i18n";
 import { plainLabel, tn } from "@/lib/strings/notetypes";
@@ -176,15 +177,15 @@ export function FieldsTab({
               <Trash2 />
             </IconButton>
             <span className="mx-1 h-4 w-px bg-line" aria-hidden="true" />
-            <IconButton label={`${tn("moveUp")} (Alt+Up)`} size="sm" disabled={index === 0} onClick={() => move(index, index - 1)}>
+            <IconButton label={withChord(tn("moveUp"), "Alt+Up")} size="sm" disabled={index === 0} onClick={() => move(index, index - 1)}>
               <ArrowUp />
             </IconButton>
-            <IconButton label={`${tn("moveDown")} (Alt+Down)`} size="sm" disabled={index === fields.length - 1} onClick={() => move(index, index + 1)}>
+            <IconButton label={withChord(tn("moveDown"), "Alt+Down")} size="sm" disabled={index === fields.length - 1} onClick={() => move(index, index + 1)}>
               <ArrowDown />
             </IconButton>
           </div>
           <p id="fields-reorder-hint" className="mt-2 px-1 text-[12px] text-ink-3">
-            {tn("reorderHint")}
+            {tn("reorderHint", { up: displayChord("Alt+Up"), down: displayChord("Alt+Down") })}
           </p>
         </div>
 

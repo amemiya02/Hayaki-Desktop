@@ -9,6 +9,7 @@ import { forwardRef, useState, type ButtonHTMLAttributes, type InputHTMLAttribut
 import { Toaster } from "sonner";
 import { extendTailwindMerge } from "tailwind-merge";
 
+import { displayChord } from "@/lib/chord";
 import { t } from "@/lib/i18n";
 
 import { clampTo, parseNumber, placesOf, stepFrom } from "./number-field";
@@ -356,7 +357,7 @@ export const menuItemClass =
   "data-[highlighted]:bg-accent-soft data-[disabled]:opacity-40 [&_svg]:size-4 [&_svg]:text-ink-2";
 
 export function MenuShortcut({ children }: { children: ReactNode }) {
-  return <span className="tabular ms-auto ps-6 text-caption text-ink-3">{children}</span>;
+  return <span className="tabular ms-auto ps-6 text-caption text-ink-3">{typeof children === "string" ? displayChord(children) : children}</span>;
 }
 
 export function MenuItem({
@@ -384,24 +385,42 @@ export function MenuItem({
   );
 }
 
+/** A toggle row. With an `icon` the check trails the row, so the icon column lines up with plain items. */
 export function MenuCheckItem({
   children,
   checked,
   onSelect,
   shortcut,
+  icon,
 }: {
   children: ReactNode;
   checked: boolean;
   onSelect: () => void;
   shortcut?: string;
+  icon?: ReactNode;
 }) {
   return (
-    <DropdownMenu.CheckboxItem checked={checked} onSelect={onSelect} className={cn(menuItemClass, "ps-8")}>
-      <DropdownMenu.ItemIndicator className="absolute start-2.5 inline-flex">
-        <Check />
-      </DropdownMenu.ItemIndicator>
-      {children}
-      {shortcut && <MenuShortcut>{shortcut}</MenuShortcut>}
+    <DropdownMenu.CheckboxItem checked={checked} onSelect={onSelect} className={cn(menuItemClass, !icon && "ps-8")}>
+      {icon ? (
+        <>
+          {icon}
+          {children}
+          {shortcut && <MenuShortcut>{shortcut}</MenuShortcut>}
+          <span className={cn("grid size-4 shrink-0 place-items-center", shortcut ? "ms-2" : "ms-auto")}>
+            <DropdownMenu.ItemIndicator className="inline-flex">
+              <Check />
+            </DropdownMenu.ItemIndicator>
+          </span>
+        </>
+      ) : (
+        <>
+          <DropdownMenu.ItemIndicator className="absolute start-2.5 inline-flex">
+            <Check />
+          </DropdownMenu.ItemIndicator>
+          {children}
+          {shortcut && <MenuShortcut>{shortcut}</MenuShortcut>}
+        </>
+      )}
     </DropdownMenu.CheckboxItem>
   );
 }

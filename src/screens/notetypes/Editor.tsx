@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 import { confirm } from "@/components/confirm";
 import { Button, Kbd, Segmented, Spinner } from "@/components/ui";
+import { displayChord, withChord } from "@/lib/chord";
 import * as core from "@/lib/anki/generated/core";
 import type { Note } from "@/lib/anki/proto/anki/notes_pb";
 import type { Notetype } from "@/lib/anki/proto/anki/notetypes_pb";
@@ -234,9 +235,9 @@ export function NotetypeEditor({ notetypeId, tab }: { notetypeId: bigint; tab?: 
         <Button onClick={() => void leave()} disabled={saving}>
           {dirty ? tr("actions-discard") : tr("actions-close")}
         </Button>
-        <Button variant="primary" disabled={!dirty || saving} onClick={() => void save()} title={`${tr("actions-save")} (Ctrl+Enter)`}>
+        <Button variant="primary" disabled={!dirty || saving} onClick={() => void save()} title={withChord(tr("actions-save"), "Ctrl+Enter")}>
           {tr("actions-save")}
-          <Kbd className="border-transparent bg-[color-mix(in_oklab,var(--on-accent)_18%,transparent)] text-on-accent">Ctrl+Enter</Kbd>
+          <Kbd className="border-transparent bg-[color-mix(in_oklab,var(--on-accent)_18%,transparent)] text-on-accent">{displayChord("Ctrl+Enter")}</Kbd>
         </Button>
       </footer>
     </div>

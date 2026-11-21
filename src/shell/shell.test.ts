@@ -10,7 +10,7 @@ import { SHORTCUTS } from "@/screens/browse/keys";
 import { EDITOR_MIN, editorWidth, gridTemplate } from "@/screens/browse/store";
 
 import { isWebViewAccelerator } from "./accelerators";
-import { displayChord, filterSections, SECTIONS, splitChord, type ResolvedSection } from "./shortcuts";
+import { displayChord, displayKeys, filterSections, resolveSections, SECTIONS, splitChord, withChord, type ResolvedSection } from "./shortcuts";
 
 describe("window material", () => {
   it("reads the platform from the user agent", () => {
@@ -154,5 +154,40 @@ describe("displayChord", () => {
     expect(displayChord("Ctrl+Shift+I", true)).toBe("\u21E7\u2318I");
     expect(displayChord("Ctrl+\\", true)).toBe("\u2318\\");
     expect(displayChord("Ctrl+Shift+I", false)).toBe("Ctrl+Shift+I");
+  });
+});
+
+describe("displayKeys", () => {
+  it("maps each key to its macOS glyph in Apple's modifier order", () => {
+    expect(displayKeys("Ctrl+Shift+P", true)).toEqual(["\u21E7", "\u2318", "P"]);
+    expect(displayKeys("Ctrl+Alt+Shift+C", true)).toEqual(["\u2325", "\u21E7", "\u2318", "C"]);
+    expect(displayKeys("Ctrl+Cmd+F", true)).toEqual(["\u2303", "\u2318", "F"]);
+    expect(displayKeys("Space", true)).toEqual(["Space"]);
+  });
+
+  it("leaves chords alone on other platforms", () => {
+    expect(displayKeys("Ctrl+Shift+P", false)).toEqual(["Ctrl", "Shift", "P"]);
+    expect(displayKeys("Ctrl++", false)).toEqual(["Ctrl", "+"]);
+  });
+});
+
+describe("withChord", () => {
+  it("appends the chord in this platform's notation", () => {
+    expect(withChord("Undo", "Ctrl+Z", true)).toBe("Undo (\u2318Z)");
+    expect(withChord("Undo", "Ctrl+Z", false)).toBe("Undo (Ctrl+Z)");
+    expect(withChord("Undo", undefined, true)).toBe("Undo");
+  });
+});
+
+describe("resolveSections", () => {
+  const fullscreen = (mac: boolean) =>
+    resolveSections(SECTIONS, mac)
+      .flatMap((s) => s.items)
+      .flatMap((i) => i.keys)
+      .includes("Ctrl+Cmd+F");
+
+  it("lists the macOS-only full screen chord only on macOS", () => {
+    expect(fullscreen(true)).toBe(true);
+    expect(fullscreen(false)).toBe(false);
   });
 });

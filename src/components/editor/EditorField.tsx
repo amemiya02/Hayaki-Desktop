@@ -9,6 +9,7 @@ import { ChevronRight, Code, Pin } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn, Tooltip } from "@/components/ui";
+import { withChord } from "@/lib/chord";
 import { tr } from "@/lib/i18n";
 
 import { PlainTextInput } from "./PlainTextInput";
@@ -101,7 +102,7 @@ export function EditorField({
         </button>
         {summary && <span className="min-w-0 flex-1 truncate text-caption text-ink-3">{summary}</span>}
         <div className="ms-auto flex items-center gap-0.5">
-          <Tooltip content={`${tr("editing-toggle-html-editor")} (Ctrl+Shift+X)`}>
+          <Tooltip content={withChord(tr("editing-toggle-html-editor"), "Ctrl+Shift+X")}>
             <button
               type="button"
               tabIndex={-1}

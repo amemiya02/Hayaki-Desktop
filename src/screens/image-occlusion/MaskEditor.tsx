@@ -39,6 +39,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEv
 import { Popover } from "radix-ui";
 
 import { cn, Menu, MenuContent, MenuItem, MenuTrigger, Tooltip } from "@/components/ui";
+import { withChord } from "@/lib/chord";
 import { tr } from "@/lib/i18n";
 import { maskCount, tio } from "@/lib/strings/image-occlusion";
 
@@ -291,7 +292,7 @@ function BarButton({
   side?: "bottom" | "right";
 }) {
   return (
-    <Tooltip content={shortcut ? `${label} (${shortcut})` : label} side={side}>
+    <Tooltip content={withChord(label, shortcut)} side={side}>
       <button
         type="button"
         aria-label={label}

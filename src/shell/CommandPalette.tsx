@@ -61,7 +61,7 @@ import { redoLabel, runRedo, runUndo, undoLabel, useUndoStatus } from "./undo";
 import { toggleFullscreen } from "./WindowHost";
 import { zoom } from "./zoom";
 import { useExport } from "./ExportDialog";
-import { GLOBAL_KEYS, splitChord } from "./shortcuts";
+import { GLOBAL_KEYS, displayKeys } from "./shortcuts";
 import { useShortcutsSheet } from "./ShortcutsSheet";
 import { checkDatabase, checkMedia, createBackup, emptyCards } from "./Tools";
 import { openBackup } from "./Backups";
@@ -89,7 +89,7 @@ function Item({ icon, label, keys, onSelect, value }: { icon: ReactNode; label: 
           {keys.map((chord, k) => (
             <Fragment key={chord}>
               {k > 0 && <span aria-hidden>/</span>}
-              <Kbd>{splitChord(chord).join(" ")}</Kbd>
+              <Kbd>{displayKeys(chord).join(" ")}</Kbd>
             </Fragment>
           ))}
         </span>

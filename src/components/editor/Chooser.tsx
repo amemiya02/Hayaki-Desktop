@@ -7,6 +7,7 @@ import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { Popover } from "radix-ui";
 
 import { cn, Tooltip } from "@/components/ui";
+import { withChord } from "@/lib/chord";
 import { te } from "@/lib/strings/editor";
 
 export interface ChooserItem {
@@ -52,7 +53,7 @@ export function Chooser({
   const current = items.find((item) => item.id === value);
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Tooltip content={shortcut ? `${label} (${shortcut})` : label}>
+      <Tooltip content={withChord(label, shortcut)}>
         <Popover.Trigger asChild disabled={disabled}>
           <button
             type="button"

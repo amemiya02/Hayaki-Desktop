@@ -16,14 +16,15 @@ import {
   Columns3,
   CopyPlus,
   Eraser,
+  BookmarkMinus,
   Eye,
+  ListRestart,
   FileCog,
   Files,
   GraduationCap,
   Filter as FilterIcon,
   Info,
   Upload,
-  EyeOff,
   Flag,
   FlagOff,
   FolderInput,
@@ -32,7 +33,6 @@ import {
   PanelBottom,
   PanelLeft,
   Replace,
-  RotateCcw,
   Search,
   Star,
   Tag,
@@ -64,6 +64,7 @@ import {
 import * as core from "@/lib/anki/generated/core";
 import { ConfigKey_String } from "@/lib/anki/proto/anki/config_pb";
 import { BrowserColumns_Sorting, type SortOrderSchema } from "@/lib/anki/proto/anki/search_pb";
+import { withChord } from "@/lib/chord";
 import { t, tr, trLabel } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { tb } from "@/lib/strings/browse";
@@ -608,10 +609,10 @@ export function BrowseScreen({ search }: { search?: string }) {
     zoomOut: <ZoomOut />,
     changeDeck: <FolderInput />,
     setDue: <CalendarClock />,
-    forget: <RotateCcw />,
+    forget: <ListRestart />,
     reposition: <ListOrdered />,
     toggleSuspend: <CirclePause />,
-    toggleBury: <EyeOff />,
+    toggleBury: <BookmarkMinus />,
     addTags: <Tag />,
     removeTags: <Tags />,
     toggleMark: <Star />,
@@ -643,7 +644,7 @@ export function BrowseScreen({ search }: { search?: string }) {
           {gi > 0 && <CtxSeparator />}
           {group.map((id) =>
             id in checks ? (
-              <CtxCheck key={id} checked={!!checks[id]} onSelect={() => runAction(id)} shortcut={keyLabel(id)}>
+              <CtxCheck key={id} checked={!!checks[id]} onSelect={() => runAction(id)} shortcut={keyLabel(id)} icon={icons[id]}>
                 {actionLabel(id)}
               </CtxCheck>
             ) : (
@@ -674,7 +675,7 @@ export function BrowseScreen({ search }: { search?: string }) {
           {gi > 0 && <MenuSeparator />}
           {group.map((id) =>
             id in checks ? (
-              <MenuCheckItem key={id} checked={!!checks[id]} onSelect={() => runAction(id)}>
+              <MenuCheckItem key={id} checked={!!checks[id]} onSelect={() => runAction(id)} shortcut={keyLabel(id)} icon={icons[id]}>
                 {actionLabel(id)}
               </MenuCheckItem>
             ) : (
@@ -784,7 +785,7 @@ export function BrowseScreen({ search }: { search?: string }) {
     </div>
   );
 
-  const shortcutTitle = (id: ActionId) => `${actionLabel(id)} (${keyLabel(id)})`;
+  const shortcutTitle = (id: ActionId) => withChord(actionLabel(id), keyLabel(id));
 
   return (
     <div className="flex h-full min-h-0">
@@ -797,7 +798,7 @@ export function BrowseScreen({ search }: { search?: string }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3">
           <IconButton
-            label={`${filtersOpen ? tb("hideFilters") : tb("showFilters")} (${keyLabel("toggleFilters")})`}
+            label={withChord(filtersOpen ? tb("hideFilters") : tb("showFilters"), keyLabel("toggleFilters"))}
             aria-pressed={filtersOpen}
             onClick={() => setFiltersOpen(!filtersOpen)}
           >
@@ -811,7 +812,7 @@ export function BrowseScreen({ search }: { search?: string }) {
               submitSearch(text);
             }}
           >
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-3" />
+            <Search className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-3" />
             <TextField
               ref={searchField}
               value={text}
@@ -829,7 +830,7 @@ export function BrowseScreen({ search }: { search?: string }) {
               spellCheck={false}
               className="ps-8 pe-8"
             />
-            {searching && <Spinner className="absolute right-2.5 top-1/2 -translate-y-1/2" />}
+            {searching && <Spinner className="absolute end-2.5 top-1/2 -translate-y-1/2" />}
           </form>
           <Segmented
             label={tr("browsing-toggle-showing-cards-notes")}
@@ -840,7 +841,7 @@ export function BrowseScreen({ search }: { search?: string }) {
               { value: "notes", label: tr("browsing-notes") },
             ]}
           />
-          <div className="ml-auto flex items-center gap-0.5">
+          <div className="ms-auto flex items-center gap-0.5">
             <IconButton label={shortcutTitle("preview")} disabled={!hasSelection} onClick={() => runAction("preview")}>
               <Eye />
             </IconButton>

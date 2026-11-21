@@ -32,6 +32,7 @@ import { Popover } from "radix-ui";
 import { useRef, type ReactNode } from "react";
 
 import { cn, Tooltip } from "@/components/ui";
+import { displayChord, withChord } from "@/lib/chord";
 import { tr } from "@/lib/i18n";
 import { te } from "@/lib/strings/editor";
 
@@ -77,7 +78,7 @@ function ToolButton({
   className?: string;
 }) {
   return (
-    <Tooltip content={shortcut ? `${label} (${shortcut})` : label}>
+    <Tooltip content={withChord(label, shortcut)}>
       <button
         type="button"
         tabIndex={-1}
@@ -147,7 +148,7 @@ function MenuRow({ label, shortcut, onClick, icon }: { label: string; shortcut?:
     >
       {icon}
       <span className="flex-1">{label}</span>
-      {shortcut && <span className="ps-6 text-[12px] text-ink-3">{shortcut}</span>}
+      {shortcut && <span className="tabular ps-6 text-[12px] text-ink-3">{displayChord(shortcut)}</span>}
     </button>
   );
 }
