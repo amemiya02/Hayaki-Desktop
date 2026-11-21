@@ -6,15 +6,25 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import type { Mode } from "./config";
+import { clampZoom, type LayoutMode } from "./layout";
 
 interface BrowseLayout {
   filtersOpen: boolean;
   /** Width of the editor pane as a fraction of the screen. */
   editorFraction: number;
+  /** Height of the editor pane as a fraction of the body, when it sits below the table. */
+  editorFractionBelow: number;
+  /** Editor beside the table, below it, or by the window's shape. */
+  layout: LayoutMode;
+  /** Table zoom, 1 being normal. */
+  zoom: number;
   /** Column widths in pixels, per mode and column key. */
   widths: Record<Mode, Record<string, number>>;
   setFiltersOpen(open: boolean): void;
   setEditorFraction(fraction: number): void;
+  setEditorFractionBelow(fraction: number): void;
+  setLayout(layout: LayoutMode): void;
+  setZoom(zoom: number): void;
   setWidth(mode: Mode, key: string, width: number): void;
 }
 
@@ -23,9 +33,15 @@ export const useBrowseLayout = create<BrowseLayout>()(
     (set) => ({
       filtersOpen: true,
       editorFraction: 0.4,
+      editorFractionBelow: 0.5,
+      layout: "auto",
+      zoom: 1,
       widths: { cards: {}, notes: {} },
       setFiltersOpen: (filtersOpen) => set({ filtersOpen }),
       setEditorFraction: (editorFraction) => set({ editorFraction: Math.min(0.7, Math.max(0.2, editorFraction)) }),
+      setEditorFractionBelow: (fraction) => set({ editorFractionBelow: Math.min(0.8, Math.max(0.2, fraction)) }),
+      setLayout: (layout) => set({ layout }),
+      setZoom: (zoom) => set({ zoom: clampZoom(zoom) }),
       setWidth: (mode, key, width) =>
         set((s) => ({ widths: { ...s.widths, [mode]: { ...s.widths[mode], [key]: Math.round(width) } } })),
     }),

@@ -9,11 +9,17 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowDownToLine,
+  ArrowUpToLine,
   CalendarClock,
   CirclePause,
   Columns3,
+  CopyPlus,
+  Eraser,
   Eye,
   FileCog,
+  Files,
+  GraduationCap,
   Filter as FilterIcon,
   Info,
   Upload,
@@ -23,6 +29,7 @@ import {
   FolderInput,
   ListOrdered,
   MoreHorizontal,
+  PanelBottom,
   PanelLeft,
   Replace,
   RotateCcw,
@@ -31,6 +38,8 @@ import {
   Tag,
   Tags,
   Trash2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -78,6 +87,7 @@ import {
 import { FilterSidebar } from "./FilterSidebar";
 import { actionForKey, SHORTCUTS, type ActionId } from "./keys";
 import { CtxCheck, CtxItem, CtxSeparator, CtxSub } from "./menus";
+import { editorBelow, stepZoom } from "./layout";
 import { idSearch, parsable, plainLabel } from "./search";
 import { emptySelection, intersect, invertSelection, moveCursor, orderedSelection, selectAll, type Selection } from "./selection";
 import { defaultWidth, EDITOR_MIN, editorWidth, useBrowseCurrent, useBrowseLayout } from "./store";
@@ -110,7 +120,20 @@ function isEditable(target: EventTarget | null): boolean {
 }
 
 /** Shortcuts that still work while typing in the search field or the editor. */
-const WHILE_TYPING = new Set<ActionId>(["focusSearch", "focusTable", "focusEditor", "toggleFilters", "toggleMode", "next", "prev", "preview", "cardInfo"]);
+const WHILE_TYPING = new Set<ActionId>([
+  "focusSearch",
+  "focusTable",
+  "focusEditor",
+  "toggleFilters",
+  "toggleMode",
+  "next",
+  "prev",
+  "preview",
+  "cardInfo",
+  "zoomIn",
+  "zoomOut",
+  "zoomReset",
+]);
 
 export function BrowseScreen({ search }: { search?: string }) {
   const filtersOpen = useBrowseLayout((s) => s.filtersOpen);
@@ -126,6 +149,12 @@ export function BrowseScreen({ search }: { search?: string }) {
   }, [setFiltersOpen]);
   const editorFraction = useBrowseLayout((s) => s.editorFraction);
   const setEditorFraction = useBrowseLayout((s) => s.setEditorFraction);
+  const editorFractionBelow = useBrowseLayout((s) => s.editorFractionBelow);
+  const setEditorFractionBelow = useBrowseLayout((s) => s.setEditorFractionBelow);
+  const layout = useBrowseLayout((s) => s.layout);
+  const setLayout = useBrowseLayout((s) => s.setLayout);
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const below = editorBelow(layout, windowSize.width, windowSize.height);
 
   const [mode, setMode] = useState<Mode | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
@@ -142,11 +171,15 @@ export function BrowseScreen({ search }: { search?: string }) {
   const searchField = useRef<HTMLInputElement>(null);
   const editorPane = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
-  const [bodyWidth, setBodyWidth] = useState(0);
+  const [bodySize, setBodySize] = useState({ width: 0, height: 0 });
+  const bodyWidth = bodySize.width;
   useEffect(() => {
     const el = body.current;
     if (!el) return;
-    const observer = new ResizeObserver(([entry]) => setBodyWidth(Math.round(entry.contentRect.width)));
+    const observer = new ResizeObserver(([entry]) => {
+      setBodySize({ width: Math.round(entry.contentRect.width), height: Math.round(entry.contentRect.height) });
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -334,6 +367,7 @@ export function BrowseScreen({ search }: { search?: string }) {
     current: selection.current,
     selected: () => orderedSelection(state.current.selection, state.current.ids ?? []),
     refresh: () => runSearch(state.current.active ?? ""),
+    search: (text: string) => submitSearch(text),
     afterRemove: async () => {
       const { ids: list, selection: sel } = state.current;
       const chosen = orderedSelection(sel, list ?? []);
@@ -377,6 +411,23 @@ export function BrowseScreen({ search }: { search?: string }) {
     if (!m) return;
     const noteIds = await noteIdsFor(m, orderedSelection(sel, list ?? []));
     if (noteIds.length > 0) useExport.getState().show({ noteIds });
+  };
+
+  /** The sidebar's Add to or Remove from Selected Notes. */
+  const tagSelected = async (tag: string, remove: boolean) => {
+    const { mode: m, selection: sel, ids: list } = state.current;
+    const rows = m ? orderedSelection(sel, list ?? []) : [];
+    if (rows.length === 0) {
+      toast(tr("browsing-no-selection"));
+      return;
+    }
+    try {
+      const noteIds = await noteIdsFor(m!, rows);
+      const out = remove ? await core.removeNoteTags({ noteIds, tags: tag }) : await core.addNoteTags({ noteIds, tags: tag });
+      toast(tr("browsing-notes-updated", { count: out.count }));
+    } catch (error) {
+      toast.error(errorText(error));
+    }
   };
 
   const focusEditor = () => {
@@ -424,6 +475,20 @@ export function BrowseScreen({ search }: { search?: string }) {
         case "exportNotes":
           void exportNotes();
           return;
+        case "firstCard":
+        case "lastCard": {
+          const next = moveCursor(sel, list ?? [], id === "firstCard" ? -(list?.length ?? 0) : (list?.length ?? 0), false);
+          setSelection(next);
+          if (next.current !== null) table.current?.scrollToId(next.current);
+          return;
+        }
+        case "zoomIn":
+        case "zoomOut":
+        case "zoomReset": {
+          const { zoom, setZoom } = useBrowseLayout.getState();
+          setZoom(stepZoom(zoom, id === "zoomIn" ? 1 : id === "zoomOut" ? -1 : 0));
+          return;
+        }
         case "next":
         case "prev": {
           const next = moveCursor(sel, list ?? [], id === "next" ? 1 : -1, false);
@@ -497,6 +562,24 @@ export function BrowseScreen({ search }: { search?: string }) {
         return plainLabel(tr("qt-misc-create-filtered-deck"));
       case "exportNotes":
         return trLabel("qt-accel-export-notes");
+      case "gradeNow":
+        return tr("actions-grade-now");
+      case "createCopy":
+        return tr("actions-create-copy");
+      case "findDuplicates":
+        return tr("browsing-find-duplicates");
+      case "clearUnusedTags":
+        return tr("browsing-clear-unused-tags");
+      case "firstCard":
+        return tr("browsing-first-card");
+      case "lastCard":
+        return tr("browsing-last-card");
+      case "zoomIn":
+        return trLabel("qt-accel-zoom-in");
+      case "zoomOut":
+        return trLabel("qt-accel-zoom-out");
+      case "zoomReset":
+        return trLabel("qt-accel-reset-zoom");
       default:
         return id;
     }
@@ -508,6 +591,14 @@ export function BrowseScreen({ search }: { search?: string }) {
     changeNotetype: <FileCog />,
     createFiltered: <FilterIcon />,
     exportNotes: <Upload />,
+    gradeNow: <GraduationCap />,
+    createCopy: <CopyPlus />,
+    findDuplicates: <Files />,
+    clearUnusedTags: <Eraser />,
+    firstCard: <ArrowUpToLine />,
+    lastCard: <ArrowDownToLine />,
+    zoomIn: <ZoomIn />,
+    zoomOut: <ZoomOut />,
     changeDeck: <FolderInput />,
     setDue: <CalendarClock />,
     forget: <RotateCcw />,
@@ -529,7 +620,7 @@ export function BrowseScreen({ search }: { search?: string }) {
 
   const groups: ActionId[][] = [
     ["preview", "cardInfo"],
-    ["changeDeck", "changeNotetype", "setDue", "forget", "reposition"],
+    ["changeDeck", "changeNotetype", "createCopy", "setDue", "forget", "gradeNow", "reposition"],
     ["toggleSuspend", "toggleBury"],
     ["addTags", "removeTags", "toggleMark", "findReplace"],
     ["exportNotes", "delete"],
@@ -593,6 +684,37 @@ export function BrowseScreen({ search }: { search?: string }) {
         <FilterIcon />
         {actionLabel("createFiltered")}
       </MenuItem>
+      <MenuItem onSelect={() => runAction("findDuplicates")}>
+        {icons.findDuplicates}
+        {actionLabel("findDuplicates")}
+      </MenuItem>
+      <MenuItem onSelect={() => runAction("clearUnusedTags")}>
+        {icons.clearUnusedTags}
+        {actionLabel("clearUnusedTags")}
+      </MenuItem>
+      <MenuSeparator />
+      <MenuItem onSelect={() => runAction("firstCard")} shortcut={keyLabel("firstCard")} disabled={!ids?.length}>
+        {icons.firstCard}
+        {actionLabel("firstCard")}
+      </MenuItem>
+      <MenuItem onSelect={() => runAction("lastCard")} shortcut={keyLabel("lastCard")} disabled={!ids?.length}>
+        {icons.lastCard}
+        {actionLabel("lastCard")}
+      </MenuItem>
+      <MenuSeparator />
+      <SubMenu label={trLabel("qt-accel-layout")} icon={<PanelBottom />}>
+        {(["auto", "vertical", "horizontal"] as const).map((value) => (
+          <MenuCheckItem key={value} checked={layout === value} onSelect={() => setLayout(value)}>
+            {trLabel(`qt-accel-layout-${value}`)}
+          </MenuCheckItem>
+        ))}
+      </SubMenu>
+      {(["zoomIn", "zoomOut", "zoomReset"] as const).map((id) => (
+        <MenuItem key={id} onSelect={() => runAction(id)} shortcut={keyLabel(id)}>
+          {icons[id]}
+          {actionLabel(id)}
+        </MenuItem>
+      ))}
       <SubMenu label={tb("columns")} icon={<Columns3 />}>
         <div className="max-h-[60vh] overflow-y-auto">
           {[...(allColumns ?? [])]
@@ -616,7 +738,8 @@ export function BrowseScreen({ search }: { search?: string }) {
     const box = body.current?.getBoundingClientRect();
     if (!box) return;
     target.setPointerCapture(e.pointerId);
-    const move = (ev: PointerEvent) => setEditorFraction((box.right - ev.clientX) / box.width);
+    const move = (ev: PointerEvent) =>
+      below ? setEditorFractionBelow((box.bottom - ev.clientY) / box.height) : setEditorFraction((box.right - ev.clientX) / box.width);
     const up = () => {
       target.removeEventListener("pointermove", move);
       target.removeEventListener("pointerup", up);
@@ -628,6 +751,9 @@ export function BrowseScreen({ search }: { search?: string }) {
   const storedWidths = useBrowseLayout((s) => (mode ? s.widths[mode] : undefined));
   const tableNeed = columns.reduce((sum, key) => sum + (storedWidths?.[key] ?? defaultWidth(key)), 0);
   const editorPx = editorWidth(bodyWidth, editorFraction, tableNeed);
+  const editorStyle = below
+    ? { height: bodySize.height > 0 ? Math.round(bodySize.height * editorFractionBelow) : `${editorFractionBelow * 100}%`, minHeight: 160 }
+    : { width: bodyWidth > 0 ? editorPx : `${editorFraction * 100}%`, minWidth: EDITOR_MIN };
 
   const single = selection.selected.size === 1 ? [...selection.selected][0] : null;
   const editorNoteId = mode === "notes" ? single : single !== null && current?.card?.id === single ? current.noteId : null;
@@ -657,7 +783,7 @@ export function BrowseScreen({ search }: { search?: string }) {
     <div className="flex h-full min-h-0">
       {filtersOpen && (
         <aside className="w-[220px] shrink-0 border-r border-line bg-sidebar-pane">
-          <FilterSidebar search={active ?? ""} onSearch={submitSearch} />
+          <FilterSidebar search={active ?? ""} onSearch={submitSearch} onTagNotes={(tag, remove) => void tagSelected(tag, remove)} />
         </aside>
       )}
 
@@ -780,8 +906,8 @@ export function BrowseScreen({ search }: { search?: string }) {
           </p>
         )}
 
-        <div ref={body} className="flex min-h-0 flex-1">
-          <section className="min-w-0 flex-1" aria-label={mode === "notes" ? tr("browsing-notes") : tr("browsing-cards")}>
+        <div ref={body} className={cn("flex min-h-0 flex-1", below && "flex-col")}>
+          <section className="min-h-0 min-w-0 flex-1" aria-label={mode === "notes" ? tr("browsing-notes") : tr("browsing-cards")}>
             {mode && allColumns ? (
               <Table
                 ref={table}
@@ -809,19 +935,24 @@ export function BrowseScreen({ search }: { search?: string }) {
 
           <div
             role="separator"
-            aria-orientation="vertical"
+            aria-orientation={below ? "horizontal" : "vertical"}
             aria-label={tb("resizePane")}
             onPointerDown={startEditorResize}
-            onDoubleClick={() => setEditorFraction(0.4)}
-            className="group relative w-px shrink-0 cursor-col-resize bg-line"
+            onDoubleClick={() => (below ? setEditorFractionBelow(0.5) : setEditorFraction(0.4))}
+            className={cn("group relative shrink-0 bg-line", below ? "h-px cursor-row-resize" : "w-px cursor-col-resize")}
           >
-            <span className="absolute inset-y-0 -left-1 -right-1 transition-colors duration-[var(--dur-fast)] group-hover:bg-accent-soft" />
+            <span
+              className={cn(
+                "absolute transition-colors duration-[var(--dur-fast)] group-hover:bg-accent-soft",
+                below ? "inset-x-0 -bottom-1 -top-1" : "inset-y-0 -left-1 -right-1",
+              )}
+            />
           </div>
 
           <aside
             ref={editorPane}
             className="shrink-0 overflow-hidden bg-bg"
-            style={{ width: bodyWidth > 0 ? editorPx : `${editorFraction * 100}%`, minWidth: EDITOR_MIN }}
+            style={editorStyle}
           >
             {editorNoteId !== null ? (
               <NoteEditor key={String(editorNoteId)} noteId={editorNoteId} />

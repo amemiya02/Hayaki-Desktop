@@ -8,7 +8,7 @@
  */
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { cn } from "@/components/ui";
 import {
@@ -27,6 +27,11 @@ import { clickRow, contextRow, moveCursor, selectAll, type Selection } from "./s
 import { defaultWidth, MIN_WIDTH, useBrowseLayout, gridTemplate } from "./store";
 
 export const ROW_HEIGHT = 32;
+
+/** Row height at a zoom factor; the header and rows scale with it, as in Anki's table. */
+export function rowHeightAt(zoom: number): number {
+  return Math.round(ROW_HEIGHT * zoom);
+}
 
 const FLAG_TINTS: Partial<Record<BrowserRow_Color, number>> = {
   [BrowserRow_Color.FLAG_RED]: 1,
@@ -89,6 +94,8 @@ export const Table = forwardRef<TableHandle, Props>(function Table(
   const [focused, setFocused] = useState(false);
   const storedWidths = useBrowseLayout((s) => s.widths[mode]);
   const setWidth = useBrowseLayout((s) => s.setWidth);
+  const zoom = useBrowseLayout((s) => s.zoom);
+  const rowHeight = rowHeightAt(zoom);
   const [drag, setDrag] = useState<{ key: string; width: number } | null>(null);
 
   const byKey = useMemo(() => new Map(allColumns.map((c) => [c.key, c])), [allColumns]);
@@ -100,13 +107,16 @@ export const Table = forwardRef<TableHandle, Props>(function Table(
   const virtualizer = useVirtualizer({
     count: list.length,
     getScrollElement: () => scroller.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => rowHeight,
     overscan: 10,
     // The sticky header sits above the first row.
-    paddingStart: ROW_HEIGHT,
-    scrollPaddingStart: ROW_HEIGHT,
+    paddingStart: rowHeight,
+    scrollPaddingStart: rowHeight,
     getItemKey: (index) => String(list[index]),
   });
+
+  // A new zoom changes every row's size.
+  useEffect(() => virtualizer.measure(), [rowHeight, virtualizer]);
 
   const scrollToIndex = useCallback((index: number) => virtualizer.scrollToIndex(index, { align: "auto" }), [virtualizer]);
 
@@ -143,7 +153,7 @@ export const Table = forwardRef<TableHandle, Props>(function Table(
     [list, onSelection],
   );
 
-  const pageRows = () => Math.max(1, Math.floor((scroller.current?.clientHeight ?? 320) / ROW_HEIGHT) - 2);
+  const pageRows = () => Math.max(1, Math.floor((scroller.current?.clientHeight ?? 320) / rowHeight) - 2);
 
   const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget || list.length === 0) return;
@@ -238,7 +248,7 @@ export const Table = forwardRef<TableHandle, Props>(function Table(
       <CtxTrigger asChild>
         <div
           role="row"
-          className="sticky top-0 z-10 grid h-8 border-b border-line bg-surface text-caption font-medium text-ink-2"
+          className="sticky top-0 z-10 grid h-[var(--row-h)] border-b border-line bg-surface text-[length:var(--head-font)] font-medium leading-[1.45] text-ink-2"
           style={{ gridTemplateColumns: template }}
         >
           {columns.map((key, i) => {
@@ -313,13 +323,14 @@ export const Table = forwardRef<TableHandle, Props>(function Table(
       onFocus={(e) => e.target === e.currentTarget && setFocused(true)}
       onBlur={(e) => e.target === e.currentTarget && setFocused(false)}
       className="tabular relative h-full overflow-auto outline-none [contain:strict]"
+      style={{ "--row-h": `${rowHeight}px`, "--cell-font": `${13 * zoom}px`, "--head-font": `${12 * zoom}px` } as CSSProperties}
     >
       <div style={{ minWidth: total, height: ids && list.length > 0 ? virtualizer.getTotalSize() : "100%" }} className="relative">
         {header}
         {ids === null ? (
           <Skeleton template={template} count={columns.length} />
         ) : list.length === 0 ? (
-          <div className="absolute inset-x-0 bottom-0 top-8 grid place-items-center px-6">{empty}</div>
+          <div className="absolute inset-x-0 bottom-0 top-[var(--row-h)] grid place-items-center px-6">{empty}</div>
         ) : (
           <CtxRoot>
             <CtxTrigger asChild>
@@ -397,7 +408,7 @@ const Row = memo(function Row({
       onMouseDown={(e) => onPointer(index, e)}
       onContextMenu={() => onContext(index)}
       className={cn(
-        "group absolute inset-x-0 top-0 grid h-8 items-center text-control text-ink",
+        "group absolute inset-x-0 top-0 grid h-[var(--row-h)] items-center text-[length:var(--cell-font)] leading-[1.45] text-ink",
         "border-b border-line-soft",
         selected ? (focused ? "bg-[var(--selection)]" : "bg-accent-soft") : "hover:bg-surface-2",
         current && focused && "shadow-ring-inset",
@@ -444,9 +455,9 @@ const Row = memo(function Row({
 
 function Skeleton({ template, count }: { template: string; count: number }) {
   return (
-    <div aria-busy className="absolute inset-x-0 top-8">
+    <div aria-busy className="absolute inset-x-0 top-[var(--row-h)]">
       {Array.from({ length: 14 }, (_, r) => (
-        <div key={r} className="grid h-8 items-center border-b border-line-soft" style={{ gridTemplateColumns: template }}>
+        <div key={r} className="grid h-[var(--row-h)] items-center border-b border-line-soft" style={{ gridTemplateColumns: template }}>
           {Array.from({ length: count }, (_, c) => (
             <div key={c} className="px-3">
               <span

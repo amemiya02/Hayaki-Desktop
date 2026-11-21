@@ -32,6 +32,15 @@ export type ActionId =
   | "changeNotetype"
   | "createFiltered"
   | "exportNotes"
+  | "gradeNow"
+  | "createCopy"
+  | "findDuplicates"
+  | "clearUnusedTags"
+  | "firstCard"
+  | "lastCard"
+  | "zoomIn"
+  | "zoomOut"
+  | "zoomReset"
   | `flag${1 | 2 | 3 | 4 | 5 | 6 | 7}`;
 
 export const SHORTCUTS: Partial<Record<ActionId, string>> = {
@@ -63,6 +72,13 @@ export const SHORTCUTS: Partial<Record<ActionId, string>> = {
   changeNotetype: "Ctrl+Shift+M",
   createFiltered: "Ctrl+G",
   exportNotes: "Ctrl+Shift+E",
+  gradeNow: "Ctrl+Shift+G",
+  createCopy: "Ctrl+Alt+E",
+  firstCard: "Home",
+  lastCard: "End",
+  zoomIn: "Ctrl+=",
+  zoomOut: "Ctrl+-",
+  zoomReset: "Ctrl+0",
   flag1: "Ctrl+1",
   flag2: "Ctrl+2",
   flag3: "Ctrl+3",
@@ -72,7 +88,15 @@ export const SHORTCUTS: Partial<Record<ActionId, string>> = {
   flag7: "Ctrl+7",
 };
 
-const BY_CHORD = new Map(Object.entries(SHORTCUTS).map(([id, chord]) => [chord, id as ActionId]));
+/** Other chords for an action: Zoom In is also Ctrl+Plus, which a keyboard types with Shift. */
+const ALIASES: [string, ActionId][] = [
+  ["Ctrl+Shift++", "zoomIn"],
+];
+
+const BY_CHORD = new Map<string, ActionId>([
+  ...Object.entries(SHORTCUTS).map(([id, chord]) => [chord, id as ActionId] as [string, ActionId]),
+  ...ALIASES,
+]);
 
 export interface KeyLike {
   key: string;

@@ -7,10 +7,11 @@
  * Ctrl ANDs, Shift ORs, Ctrl+Shift replaces and Alt negates, as in Anki.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, ChevronRight, Circle, Clock, Flag, FlagOff, Layers, Plus, Shapes, Tag, X } from "lucide-react";
-import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { Bookmark, Circle, Clock, Flag, FlagOff, Layers, Plus, Shapes, Tag, X } from "lucide-react";
+import { useState, type DragEvent, type MouseEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { confirm } from "@/components/confirm";
 import { cn, IconButton } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
 import { ConfigKey_Bool } from "@/lib/anki/proto/anki/config_pb";
@@ -18,133 +19,45 @@ import type { DeckTreeNode } from "@/lib/anki/proto/anki/decks_pb";
 import { SetDeckCollapsedRequest_Scope } from "@/lib/anki/proto/anki/decks_pb";
 import { SearchNode_CardState } from "@/lib/anki/proto/anki/search_pb";
 import type { TagTreeNode } from "@/lib/anki/proto/anki/tags_pb";
-import { localeCompare, tr } from "@/lib/i18n";
+import { cleanLabel, localeCompare, tr } from "@/lib/i18n";
+import { useNav } from "@/lib/nav";
 import { leafName } from "@/lib/queries";
+import { tb } from "@/lib/strings/browse";
 
-import { readFlagLabels, readSavedSearches, writeSavedSearches } from "./config";
-import { SaveSearchDialog } from "./dialogs";
+import { FLAG_KEYS, readFlagLabels, readSavedSearches, writeSavedSearches } from "./config";
+import { RenameDialog, SaveSearchDialog } from "./dialogs";
+import { CtxItem, CtxSeparator } from "./menus";
 import { combineSearch, joinPath, nodes, parsable, type NodeInit } from "./search";
+import * as ops from "./sidebar-ops";
+import { Item, onTreeKey, Section, type DragProps, type DropProps } from "./SidebarParts";
 
 interface Props {
   search: string;
   onSearch: (text: string) => void;
+  /** Adds or removes a tag on the selected Notes. */
+  onTagNotes: (tag: string, remove: boolean) => void;
 }
 
-function useCollapsed(key: ConfigKey_Bool) {
+/** A Deck or tag being dragged. */
+type Dragged = { kind: "deck"; full: string; id: bigint } | { kind: "tag"; full: string };
+
+/** One tree entry's collapse state, for the Expand and Collapse menu items. */
+interface Branch {
+  collapsed: boolean;
+  children: { collapsed: boolean; hasChildren: boolean; set: (collapsed: boolean) => Promise<void> }[];
+  set: (collapsed: boolean) => Promise<void>;
+}
+
+export function FilterSidebar({ search, onSearch, onTagNotes }: Props) {
   const client = useQueryClient();
-  const queryKey = ["browse", "collapsed", key];
-  const { data } = useQuery({ queryKey, queryFn: async () => (await core.getConfigBool({ key })).val });
-  const toggle = () => {
-    const next = !data;
-    client.setQueryData(queryKey, next);
-    void core.setConfigBool({ key, value: next, undoable: false }, { quiet: true });
-  };
-  return [data ?? false, toggle] as const;
-}
-
-function Section({ label, icon, collapseKey, children, action }: { label: string; icon: ReactNode; collapseKey: ConfigKey_Bool; children: ReactNode; action?: ReactNode }) {
-  const [collapsed, toggle] = useCollapsed(collapseKey);
-  return (
-    <section className="mt-1">
-      <div className="group flex h-7 items-center pr-1">
-        <button
-          data-sidebar-item
-          aria-expanded={!collapsed}
-          onClick={toggle}
-          className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-[6px] px-1.5 text-left text-caption font-semibold text-ink-3 hover:text-ink-2 [&>svg]:size-3.5 [&>svg]:shrink-0"
-        >
-          <ChevronRight className={cn("transition-transform duration-[var(--dur)] ease-out", !collapsed && "rotate-90")} />
-          {icon}
-          <span className="truncate">{label}</span>
-        </button>
-        {action}
-      </div>
-      {!collapsed && <ul role="group">{children}</ul>}
-    </section>
-  );
-}
-
-function Item({
-  label,
-  icon,
-  depth = 0,
-  active,
-  title,
-  onClick,
-  expanded,
-  onToggle,
-  trailing,
-}: {
-  label: string;
-  icon?: ReactNode;
-  depth?: number;
-  active: boolean;
-  title?: string;
-  onClick: (e: MouseEvent) => void;
-  expanded?: boolean;
-  onToggle?: () => void;
-  trailing?: ReactNode;
-}) {
-  return (
-    <li>
-      <div
-        className={cn(
-          "group flex h-[28px] items-center rounded-[7px] pr-1 text-control transition-colors duration-[var(--dur-fast)]",
-          active ? "bg-accent-soft text-accent-ink" : "text-ink hover:bg-sidebar-hover",
-        )}
-        style={{ paddingLeft: 4 + depth * 14 }}
-      >
-        {onToggle ? (
-          <button
-            tabIndex={-1}
-            aria-label={expanded ? tr("browsing-sidebar-collapse") : tr("browsing-sidebar-expand")}
-            onClick={onToggle}
-            className="grid size-5 shrink-0 place-items-center rounded-[5px] text-ink-3 hover:text-ink"
-          >
-            <ChevronRight className={cn("size-3.5 transition-transform duration-[var(--dur)] ease-out", expanded && "rotate-90")} />
-          </button>
-        ) : (
-          <span className="size-5 shrink-0" />
-        )}
-        <button
-          data-sidebar-item
-          aria-current={active ? "true" : undefined}
-          aria-expanded={onToggle ? expanded : undefined}
-          onClick={onClick}
-          onKeyDown={(e) => {
-            if (!onToggle) return;
-            if ((e.key === "ArrowRight" && !expanded) || (e.key === "ArrowLeft" && expanded)) {
-              e.preventDefault();
-              e.stopPropagation();
-              onToggle();
-            }
-          }}
-          title={title ?? label}
-          className="flex h-full min-w-0 flex-1 items-center gap-2 rounded-[6px] pl-0.5 text-left outline-none focus-visible:shadow-ring-inset [&>svg]:size-3.5 [&>svg]:shrink-0"
-        >
-          {icon}
-          <span className="min-w-0 flex-1 truncate">{label}</span>
-        </button>
-        {trailing}
-      </div>
-    </li>
-  );
-}
-
-/** Up and Down move between sidebar entries. */
-function onTreeKey(e: KeyboardEvent<HTMLElement>) {
-  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-  const items = [...e.currentTarget.querySelectorAll<HTMLElement>("[data-sidebar-item]")];
-  const index = items.indexOf(document.activeElement as HTMLElement);
-  if (index < 0) return;
-  e.preventDefault();
-  items[Math.max(0, Math.min(items.length - 1, index + (e.key === "ArrowDown" ? 1 : -1)))]?.focus();
-}
-
-export function FilterSidebar({ search, onSearch }: Props) {
-  const client = useQueryClient();
+  const go = useNav((s) => s.go);
   const [last, setLast] = useState<{ key: string; search: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  /** The entry being renamed in place, by key. */
+  const [editing, setEditing] = useState<string | null>(null);
+  const [withParents, setWithParents] = useState<Dragged | null>(null);
+  const [drag, setDrag] = useState<Dragged | null>(null);
+  const [over, setOver] = useState<string | null>(null);
 
   const { data: saved } = useQuery({ queryKey: ["browse", "saved"], queryFn: readSavedSearches });
   const { data: flagLabels } = useQuery({ queryKey: ["browse", "flagLabels"], queryFn: readFlagLabels });
@@ -164,33 +77,183 @@ export function FilterSidebar({ search, onSearch }: Props) {
   };
   const isActive = (key: string) => last?.key === key && last.search === search;
 
-  const toggleDeck = (node: DeckTreeNode) => {
-    void core
-      .setDeckCollapsed({ deckId: node.deckId, collapsed: !node.collapsed, scope: SetDeckCollapsedRequest_Scope.BROWSER }, { quiet: true })
-      .then(() => client.invalidateQueries({ queryKey: ["browse", "deckTree"] }));
+  const refresh = (...keys: string[]) => Promise.all(keys.map((key) => client.invalidateQueries({ queryKey: ["browse", key] })));
+
+  /** Runs a change, shows Anki's words with Undo, and reports a failure. */
+  const change = async (action: () => Promise<string | void>) => {
+    try {
+      const message = await action();
+      if (message) {
+        toast(message, {
+          action: {
+            label: tr("undo-undo"),
+            onClick: () =>
+              void core
+                .undo()
+                .then((out) => toast(tr("undo-action-undone", { action: out.operation })))
+                .catch(() => undefined),
+          },
+        });
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
   };
-  const toggleTag = (fullName: string, node: TagTreeNode) => {
-    void core
-      .setTagCollapsed({ name: fullName, collapsed: !node.collapsed }, { quiet: true })
-      .then(() => client.invalidateQueries({ queryKey: ["browse", "tagTree"] }));
+
+  const setDeckCollapsed = async (deckId: bigint, collapsed: boolean) => {
+    await core.setDeckCollapsed({ deckId, collapsed, scope: SetDeckCollapsedRequest_Scope.BROWSER }, { quiet: true });
+    await refresh("deckTree");
   };
+  const setTagCollapsed = async (name: string, collapsed: boolean) => {
+    await core.setTagCollapsed({ name, collapsed }, { quiet: true });
+    await refresh("tagTree");
+  };
+  const toggleDeck = (node: DeckTreeNode) => void setDeckCollapsed(node.deckId, !node.collapsed);
+  const toggleTag = (fullName: string, node: TagTreeNode) => void setTagCollapsed(fullName, !node.collapsed);
+
+  const deckBranch = (node: DeckTreeNode): Branch => ({
+    collapsed: node.collapsed,
+    set: (c) => setDeckCollapsed(node.deckId, c),
+    children: node.children.map((child) => ({
+      collapsed: child.collapsed,
+      hasChildren: child.children.length > 0,
+      set: (c) => setDeckCollapsed(child.deckId, c),
+    })),
+  });
+  const tagBranch = (full: string, node: TagTreeNode): Branch => ({
+    collapsed: node.collapsed,
+    set: (c) => setTagCollapsed(full, c),
+    children: node.children.map((child) => ({
+      collapsed: child.collapsed,
+      hasChildren: child.children.length > 0,
+      set: (c) => setTagCollapsed(joinPath(full, child.name), c),
+    })),
+  });
+
+  /** Anki's Expand, Collapse, Expand Children and Collapse Children. */
+  const branchMenu = (branch: Branch): ReactNode => {
+    const parents = branch.children.filter((c) => c.hasChildren);
+    const items: [string, () => void][] = [];
+    if (branch.collapsed) items.push([tr("browsing-sidebar-expand"), () => void branch.set(false)]);
+    else items.push([tr("browsing-sidebar-collapse"), () => void branch.set(true)]);
+    if (parents.some((c) => c.collapsed)) {
+      items.push([tr("browsing-sidebar-expand-children"), () => void Promise.all([branch.set(false), ...parents.map((c) => c.set(false))])]);
+    }
+    if (parents.some((c) => !c.collapsed)) {
+      items.push([tr("browsing-sidebar-collapse-children"), () => void Promise.all(parents.map((c) => c.set(true)))]);
+    }
+    return items.map(([label, run]) => (
+      <CtxItem key={label} onSelect={run}>
+        {label}
+      </CtxItem>
+    ));
+  };
+
+  /* ------------------------------ Drag and drop ------------------------------ */
+
+  const dragProps = (target: Dragged): DragProps => ({
+    dragging: drag?.kind === target.kind && drag.full === target.full,
+    onDragStart: (e: DragEvent) => {
+      e.dataTransfer.setData("text/plain", target.full);
+      e.dataTransfer.effectAllowed = "move";
+      setDrag(target);
+    },
+    onDragEnd: () => {
+      setDrag(null);
+      setOver(null);
+    },
+  });
+
+  /** A drop target that lights up only for a move the core accepts. */
+  const dropProps = (key: string, kind: Dragged["kind"], targetFull: string, perform: (source: Dragged) => void): DropProps => {
+    const accepts = (source: Dragged | null): source is Dragged => !!source && source.kind === kind && ops.canReparent(source.full, targetFull);
+    return {
+      over: over === key && accepts(drag),
+      onDragOver: (e) => {
+        if (!accepts(drag)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (over !== key) setOver(key);
+      },
+      onDragLeave: (e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((current) => (current === key ? null : current));
+      },
+      onDrop: (e) => {
+        e.preventDefault();
+        const source = drag;
+        setOver(null);
+        setDrag(null);
+        if (accepts(source)) perform(source);
+      },
+    };
+  };
+
+  const dropOnDeck = (key: string, full: string, parentId: bigint) =>
+    dropProps(key, "deck", full, (source) => {
+      if (source.kind === "deck") void change(() => ops.reparentDecks([source.id], parentId));
+    });
+  const dropOnTag = (key: string, full: string) =>
+    dropProps(key, "tag", full, (source) => void change(() => ops.reparentTags([source.full], full)));
+
+  /* ------------------------------ Saved searches ------------------------------ */
 
   const removeSaved = async (name: string) => {
     const next = { ...(saved ?? {}) };
     delete next[name];
     await writeSavedSearches(next);
-    await client.invalidateQueries({ queryKey: ["browse", "saved"] });
+    await refresh("saved");
+  };
+
+  const renameSaved = async (name: string, to: string) => {
+    const newName = ops.cleanName(to);
+    setEditing(null);
+    if (!newName || newName === name) return;
+    const current = await readSavedSearches();
+    const result = ops.renameSaved(current, name, newName);
+    if (result.overwrites && !(await confirm({ title: tr("browsing-sidebar-saved-searches"), message: tr("browsing-confirm-saved-search-overwrite", { name: newName }), confirm: tr("actions-rename") }))) {
+      return;
+    }
+    await writeSavedSearches(result.saved);
+    await refresh("saved");
+  };
+
+  const updateSaved = async (name: string) => {
+    try {
+      const text = (await core.buildSearchString(parsable(search))).val;
+      await writeSavedSearches({ ...(await readSavedSearches()), [name]: text });
+      await refresh("saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  /* ------------------------------ Decks and tags ------------------------------ */
+
+  const renameDeck = (node: DeckTreeNode, parent: string, to: string) => {
+    const name = ops.cleanName(to);
+    setEditing(null);
+    if (!name || name === leafName(node.name)) return;
+    void change(() => ops.renameDeck(node.deckId, joinPath(parent, name)));
+  };
+  const renameTag = (full: string, parent: string, to: string) => {
+    const name = ops.cleanName(to);
+    setEditing(null);
+    if (!name || name === full.slice(parent ? parent.length + 2 : 0)) return;
+    void change(() => ops.renameTag(full, joinPath(parent, name)));
   };
 
   const renderDecks = (list: DeckTreeNode[], parent: string, depth: number): ReactNode =>
     list.map((node) => {
-      const full = joinPath(parent, leafName(node.name));
+      const leaf = leafName(node.name);
+      const full = joinPath(parent, leaf);
       const key = `deck:${full}`;
       const hasChildren = node.children.length > 0;
+      const target: Dragged = { kind: "deck", full, id: node.deckId };
+      const remove = () => void change(() => ops.removeDecks([node.deckId], leaf));
       return (
         <DeckEntry key={String(node.deckId)}>
           <Item
-            label={leafName(node.name)}
+            label={leaf}
             title={full}
             icon={<Layers className="text-ink-3" />}
             depth={depth}
@@ -198,6 +261,25 @@ export function FilterSidebar({ search, onSearch }: Props) {
             onClick={activate(key, nodes.deck(full))}
             expanded={!node.collapsed}
             onToggle={hasChildren ? () => toggleDeck(node) : undefined}
+            rename={{ editing: editing === key, value: leaf, onStart: () => setEditing(key), onCommit: (v) => renameDeck(node, parent, v), onCancel: () => setEditing(null) }}
+            onDelete={remove}
+            drag={dragProps(target)}
+            drop={dropOnDeck(key, full, node.deckId)}
+            menu={
+              <>
+                <CtxItem onSelect={remove} danger>
+                  {tr("actions-delete")}
+                </CtxItem>
+                <CtxItem onSelect={() => setEditing(key)}>{tr("actions-rename")}</CtxItem>
+                {parent && <CtxItem onSelect={() => setWithParents(target)}>{tr("actions-rename-with-parents")}</CtxItem>}
+                {hasChildren && (
+                  <>
+                    <CtxSeparator />
+                    {branchMenu(deckBranch(node))}
+                  </>
+                )}
+              </>
+            }
           />
           {hasChildren && !node.collapsed && renderDecks(node.children, full, depth + 1)}
         </DeckEntry>
@@ -209,6 +291,8 @@ export function FilterSidebar({ search, onSearch }: Props) {
       const full = joinPath(parent, node.name);
       const key = `tag:${full}`;
       const hasChildren = node.children.length > 0;
+      const target: Dragged = { kind: "tag", full };
+      const remove = () => void change(() => ops.removeTag(full));
       return (
         <DeckEntry key={full}>
           <Item
@@ -220,6 +304,28 @@ export function FilterSidebar({ search, onSearch }: Props) {
             onClick={activate(key, nodes.tag(full))}
             expanded={!node.collapsed}
             onToggle={hasChildren ? () => toggleTag(full, node) : undefined}
+            rename={{ editing: editing === key, value: node.name, onStart: () => setEditing(key), onCommit: (v) => renameTag(full, parent, v), onCancel: () => setEditing(null) }}
+            onDelete={remove}
+            drag={dragProps(target)}
+            drop={dropOnTag(key, full)}
+            menu={
+              <>
+                <CtxItem onSelect={() => onTagNotes(full, false)}>{tr("browsing-add-to-selected-notes")}</CtxItem>
+                <CtxItem onSelect={() => onTagNotes(full, true)}>{tr("browsing-remove-from-selected-notes")}</CtxItem>
+                <CtxSeparator />
+                <CtxItem onSelect={remove} danger>
+                  {tr("actions-delete")}
+                </CtxItem>
+                <CtxItem onSelect={() => setEditing(key)}>{tr("actions-rename")}</CtxItem>
+                {parent && <CtxItem onSelect={() => setWithParents(target)}>{tr("actions-rename-with-parents")}</CtxItem>}
+                {hasChildren && (
+                  <>
+                    <CtxSeparator />
+                    {branchMenu(tagBranch(full, node))}
+                  </>
+                )}
+              </>
+            }
           />
           {hasChildren && !node.collapsed && renderTags(node.children, full, depth + 1)}
         </DeckEntry>
@@ -247,39 +353,66 @@ export function FilterSidebar({ search, onSearch }: Props) {
     ["state:buried", tr("browsing-buried"), SearchNode_CardState.BURIED, "text-buried"],
   ];
 
+  const renameFlag = async (flag: number, to: string) => {
+    setEditing(null);
+    try {
+      await ops.setFlagName(flag, to);
+      await refresh("flagLabels");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   return (
     <nav aria-label={tr("browsing-sidebar")} className="h-full overflow-y-auto px-2 pb-4 pt-2" onKeyDown={onTreeKey}>
       <Section
         label={tr("browsing-sidebar-saved-searches")}
         icon={<Bookmark />}
         collapseKey={ConfigKey_Bool.COLLAPSE_SAVED_SEARCHES}
+        menu={<CtxItem onSelect={() => setSaving(true)}>{tr("browsing-sidebar-save-current-search")}</CtxItem>}
         action={
           <IconButton label={tr("browsing-sidebar-save-current-search")} size="sm" className="size-6" onClick={() => setSaving(true)}>
             <Plus />
           </IconButton>
         }
       >
-        {savedEntries.map(([name, text]) => (
-          <Item
-            key={name}
-            label={name}
-            title={text}
-            icon={<Bookmark className="text-ink-3" />}
-            active={isActive(`saved:${name}`)}
-            onClick={activate(`saved:${name}`, parsable(text))}
-            trailing={
-              <button
-                tabIndex={-1}
-                aria-label={tr("actions-delete")}
-                title={tr("actions-delete")}
-                onClick={() => void removeSaved(name)}
-                className="grid size-5 shrink-0 place-items-center rounded-[5px] text-ink-3 opacity-0 hover:text-ink group-hover:opacity-100 [&>svg]:size-3.5"
-              >
-                <X />
-              </button>
-            }
-          />
-        ))}
+        {savedEntries.map(([name, text]) => {
+          const key = `saved:${name}`;
+          const remove = () => void removeSaved(name);
+          return (
+            <Item
+              key={name}
+              label={name}
+              title={text}
+              icon={<Bookmark className="text-ink-3" />}
+              active={isActive(key)}
+              onClick={activate(key, parsable(text))}
+              rename={{ editing: editing === key, value: name, onStart: () => setEditing(key), onCommit: (v) => void renameSaved(name, v), onCancel: () => setEditing(null) }}
+              onDelete={remove}
+              menu={
+                <>
+                  <CtxItem onSelect={() => void updateSaved(name)}>{tr("browsing-update-saved-search")}</CtxItem>
+                  <CtxSeparator />
+                  <CtxItem onSelect={remove} danger>
+                    {tr("actions-delete")}
+                  </CtxItem>
+                  <CtxItem onSelect={() => setEditing(key)}>{tr("actions-rename")}</CtxItem>
+                </>
+              }
+              trailing={
+                <button
+                  tabIndex={-1}
+                  aria-label={tr("actions-delete")}
+                  title={tr("actions-delete")}
+                  onClick={remove}
+                  className="grid size-5 shrink-0 place-items-center rounded-[5px] text-ink-3 opacity-0 hover:text-ink group-hover:opacity-100 [&>svg]:size-3.5"
+                >
+                  <X />
+                </button>
+              }
+            />
+          );
+        })}
       </Section>
 
       <Section label={tr("browsing-today")} icon={<Clock />} collapseKey={ConfigKey_Bool.COLLAPSE_TODAY}>
@@ -290,15 +423,26 @@ export function FilterSidebar({ search, onSearch }: Props) {
 
       <Section label={tr("browsing-sidebar-flags")} icon={<Flag />} collapseKey={ConfigKey_Bool.COLLAPSE_FLAGS}>
         <Item label={tr("browsing-no-flag")} icon={<FlagOff className="text-ink-3" />} active={isActive("flag:0")} onClick={activate("flag:0", nodes.flag(0))} />
-        {(flagLabels ?? []).map((label, i) => (
-          <Item
-            key={i}
-            label={label}
-            icon={<Flag style={{ color: `var(--flag-${i + 1})`, fill: `var(--flag-${i + 1})` }} />}
-            active={isActive(`flag:${i + 1}`)}
-            onClick={activate(`flag:${i + 1}`, nodes.flag(i + 1))}
-          />
-        ))}
+        {(flagLabels ?? []).map((label, i) => {
+          const key = `flag:${i + 1}`;
+          const renamed = label !== tr(FLAG_KEYS[i]);
+          return (
+            <Item
+              key={i}
+              label={label}
+              icon={<Flag style={{ color: `var(--flag-${i + 1})`, fill: `var(--flag-${i + 1})` }} />}
+              active={isActive(key)}
+              onClick={activate(key, nodes.flag(i + 1))}
+              rename={{ editing: editing === key, value: label, onStart: () => setEditing(key), onCommit: (v) => void renameFlag(i + 1, v), onCancel: () => setEditing(null) }}
+              menu={
+                <>
+                  <CtxItem onSelect={() => setEditing(key)}>{tr("actions-rename")}</CtxItem>
+                  {renamed && <CtxItem onSelect={() => void renameFlag(i + 1, "")}>{tb("resetName")}</CtxItem>}
+                </>
+              }
+            />
+          );
+        })}
       </Section>
 
       <Section label={tr("browsing-sidebar-card-state")} icon={<Circle />} collapseKey={ConfigKey_Bool.COLLAPSE_CARD_STATE}>
@@ -313,11 +457,21 @@ export function FilterSidebar({ search, onSearch }: Props) {
         ))}
       </Section>
 
-      <Section label={tr("browsing-sidebar-decks")} icon={<Layers />} collapseKey={ConfigKey_Bool.COLLAPSE_DECKS}>
+      <Section
+        label={tr("browsing-sidebar-decks")}
+        icon={<Layers />}
+        collapseKey={ConfigKey_Bool.COLLAPSE_DECKS}
+        drop={dropOnDeck("deck:", "", 0n)}
+      >
         {renderDecks(deckTree?.children ?? [], "", 0)}
       </Section>
 
-      <Section label={tr("browsing-sidebar-notetypes")} icon={<Shapes />} collapseKey={ConfigKey_Bool.COLLAPSE_NOTETYPES}>
+      <Section
+        label={tr("browsing-sidebar-notetypes")}
+        icon={<Shapes />}
+        collapseKey={ConfigKey_Bool.COLLAPSE_NOTETYPES}
+        menu={<CtxItem onSelect={() => go({ name: "notetypes" })}>{cleanLabel(tr("browsing-manage-note-types"))}</CtxItem>}
+      >
         {(notetypes?.entries ?? []).map((nt) => (
           <Item
             key={String(nt.id)}
@@ -325,11 +479,20 @@ export function FilterSidebar({ search, onSearch }: Props) {
             icon={<Shapes className="text-ink-3" />}
             active={isActive(`note:${nt.name}`)}
             onClick={activate(`note:${nt.name}`, nodes.notetype(nt.name))}
+            menu={
+              <>
+                <CtxItem onSelect={() => go({ name: "notetype", notetypeId: nt.id })}>{tb("editNotetype")}</CtxItem>
+                <CtxItem onSelect={() => go({ name: "notetype", notetypeId: nt.id, tab: "fields" })}>{tr("notetypes-fields")}</CtxItem>
+                <CtxItem onSelect={() => go({ name: "notetype", notetypeId: nt.id, tab: "templates" })}>{tr("notetypes-cards")}</CtxItem>
+                <CtxSeparator />
+                <CtxItem onSelect={() => go({ name: "notetypes" })}>{cleanLabel(tr("browsing-manage-note-types"))}</CtxItem>
+              </>
+            }
           />
         ))}
       </Section>
 
-      <Section label={tr("browsing-sidebar-tags")} icon={<Tag />} collapseKey={ConfigKey_Bool.COLLAPSE_TAGS}>
+      <Section label={tr("browsing-sidebar-tags")} icon={<Tag />} collapseKey={ConfigKey_Bool.COLLAPSE_TAGS} drop={dropOnTag("tag:", "")}>
         {renderTags(tagTree?.children ?? [], "", 0)}
       </Section>
 
@@ -342,7 +505,20 @@ export function FilterSidebar({ search, onSearch }: Props) {
               if (!window.confirm(tr("browsing-confirm-saved-search-overwrite", { name }))) return;
             }
             await writeSavedSearches({ ...current, [name]: search });
-            await client.invalidateQueries({ queryKey: ["browse", "saved"] });
+            await refresh("saved");
+          }}
+        />
+      )}
+
+      {withParents && (
+        <RenameDialog
+          title={tr(withParents.kind === "deck" ? "actions-rename-deck" : "actions-rename-tag")}
+          value={withParents.full}
+          onClose={() => setWithParents(null)}
+          onSubmit={async (name) => {
+            const clean = ops.cleanName(name);
+            if (!clean || clean === withParents.full) return;
+            await change(() => (withParents.kind === "deck" ? ops.renameDeck(withParents.id, clean).then(() => undefined) : ops.renameTag(withParents.full, clean)));
           }}
         />
       )}

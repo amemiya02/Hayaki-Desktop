@@ -87,6 +87,13 @@ const browseLabels: Partial<Record<ActionId, () => string>> = {
   focusEditor: () => trLabel("qt-accel-note"),
   undo: () => tr("undo-undo"),
   redo: () => tr("undo-redo"),
+  gradeNow: () => trLabel("actions-grade-now"),
+  createCopy: () => tr("actions-create-copy"),
+  firstCard: () => tr("browsing-first-card"),
+  lastCard: () => tr("browsing-last-card"),
+  zoomIn: () => trLabel("qt-accel-zoom-in"),
+  zoomOut: () => trLabel("qt-accel-zoom-out"),
+  zoomReset: () => trLabel("qt-accel-reset-zoom"),
 };
 
 const browseOrder: ActionId[] = [
@@ -115,6 +122,13 @@ const browseOrder: ActionId[] = [
   "createFiltered",
   "exportNotes",
   "delete",
+  "gradeNow",
+  "createCopy",
+  "firstCard",
+  "lastCard",
+  "zoomIn",
+  "zoomOut",
+  "zoomReset",
   "undo",
   "redo",
 ];

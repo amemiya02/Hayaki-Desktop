@@ -30,6 +30,7 @@ import { useNav } from "@/lib/nav";
 import { te } from "@/lib/strings/editor";
 
 import { useAddHistory } from "./history";
+import { takeAddPrefill, type AddPrefill } from "./prefill";
 
 const ORIGIN = "add";
 
@@ -110,6 +111,7 @@ export function AddScreen() {
   const container = useRef<HTMLDivElement>(null);
   const composing = useRef(false);
   const latest = useRef({ fields, tags, sticky, notetype, template, deckId });
+  const prefill = useRef<AddPrefill | null>(null);
   latest.current = { ...latest.current, sticky, notetype, template, deckId };
 
   const setPanel = (next: { open: boolean; tab: PanelTab }) => {
@@ -119,6 +121,15 @@ export function AddScreen() {
 
   // The Deck and Note Type Anki would choose.
   useEffect(() => {
+    // Create Copy in the browser opens this screen with a Note to start from.
+    // (Strict Mode runs this twice; the second run reuses what the first took.)
+    const copy = prefill.current ?? takeAddPrefill();
+    if (copy) {
+      prefill.current = copy;
+      setDeckId(copy.deckId);
+      setNotetypeId(copy.notetypeId);
+      return;
+    }
     core
       .defaultsForAdding({ homeDeckOfCurrentReviewCard: 0n })
       .then((d) => {
@@ -136,7 +147,7 @@ export function AddScreen() {
       .then(([nt, note]) => {
         if (!live) return;
         const previous = latest.current.notetype;
-        const next = previous
+        let next = previous
           ? carryFields(
               previous.fields.map((f) => f.name),
               latest.current.fields,
@@ -144,6 +155,14 @@ export function AddScreen() {
               note.fields,
             )
           : [...note.fields];
+        const copy = prefill.current;
+        prefill.current = null;
+        if (copy && copy.notetypeId === nt.id) {
+          next = copy.fields.map((value, i) => (i < nt.fields.length ? value : ""));
+          while (next.length < nt.fields.length) next.push("");
+          latest.current.tags = copy.tags;
+          setTags(copy.tags);
+        }
         latest.current.fields = next;
         setNotetype(nt);
         setTemplate(note);

@@ -15,7 +15,7 @@ import { tb } from "@/lib/strings/browse";
 
 import { plainLabel } from "./search";
 
-function errorText(error: unknown): string {
+export function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -64,7 +64,7 @@ export function Checkbox({ checked, onChange, children, disabled }: { checked: b
   );
 }
 
-function FieldLabel({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
+export function FieldLabel({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
   return (
     <label htmlFor={htmlFor} className="mb-1.5 block text-caption font-medium text-ink-2">
       {children}
@@ -72,7 +72,7 @@ function FieldLabel({ children, htmlFor }: { children: ReactNode; htmlFor?: stri
   );
 }
 
-const selectClass =
+export const selectClass =
   "h-8 w-full rounded-[8px] border border-line bg-surface px-2 text-control text-ink outline-none " +
   "hover:border-line-strong focus:border-accent focus:shadow-ring";
 
@@ -463,6 +463,44 @@ export function SaveSearchDialog({ onClose, onSubmit }: { onClose: () => void; o
         value={name}
         placeholder={tb("searchName")}
         onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && void submit()}
+      />
+    </Dialog>
+  );
+}
+
+/* ------------------------------ Rename with parents ------------------------------ */
+
+/** Renames a Deck or tag by its full name, which can also move it. */
+export function RenameDialog({
+  title,
+  value,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  value: string;
+  onClose: () => void;
+  onSubmit: (name: string) => Promise<void>;
+}) {
+  const [name, setName] = useState(value);
+  const { busy, run } = useSubmit(onClose);
+  const submit = () => name.trim() && run(() => onSubmit(name));
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={title}
+      footer={<Footer busy={busy} label={tr("actions-rename")} disabled={!name.trim()} onCancel={onClose} onConfirm={submit} />}
+    >
+      <FieldLabel htmlFor="browse-rename">{tr("actions-new-name")}</FieldLabel>
+      <TextField
+        id="browse-rename"
+        autoFocus
+        value={name}
+        spellCheck={false}
+        onChange={(e) => setName(e.target.value)}
+        onFocus={(e) => e.currentTarget.select()}
         onKeyDown={(e) => e.key === "Enter" && void submit()}
       />
     </Dialog>

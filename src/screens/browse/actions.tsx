@@ -18,6 +18,7 @@ import { SortOrderSchema } from "@/lib/anki/proto/anki/search_pb";
 import { tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { tb } from "@/lib/strings/browse";
+import { setAddPrefill } from "@/screens/add/prefill";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 
 import type { Mode } from "./config";
@@ -29,9 +30,12 @@ import {
   SetDueDialog,
   TagsDialog,
 } from "./dialogs";
+import { FindDuplicatesDialog } from "./FindDuplicates";
+import { GradeNowDialog } from "./GradeNow";
 import type { ActionId } from "./keys";
 import { PreviewDialog } from "./Preview";
 import { idSearch } from "./search";
+import { clearUnusedTags } from "./sidebar-ops";
 
 const QUEUE_SUSPENDED = -1;
 const QUEUE_SIBLING_BURIED = -2;
@@ -45,6 +49,8 @@ export interface ActionContext {
   current: bigint | null;
   /** Re-runs the search, keeping the selection where it can. */
   refresh: () => Promise<void>;
+  /** Searches for the text, as if typed in the search field. */
+  search: (text: string) => void;
   /** After rows are deleted: re-search and select the row after them. */
   afterRemove: () => Promise<void>;
   run: (id: ActionId) => void;
@@ -112,6 +118,8 @@ type DialogState =
   | { kind: "forget"; cardIds: bigint[] }
   | { kind: "reposition"; cardIds: bigint[]; queue: { top: number; bottom: number } | null }
   | { kind: "find"; noteIds: bigint[] }
+  | { kind: "grade"; cardIds: bigint[] }
+  | { kind: "dupes" }
   | { kind: "preview"; cardIds: bigint[]; start: number };
 
 export function useBrowseActions(ctx: Omit<ActionContext, "run">, current: CurrentState | undefined) {
@@ -137,6 +145,8 @@ export function useBrowseActions(ctx: Omit<ActionContext, "run">, current: Curre
       "removeTags",
       "toggleMark",
       "delete",
+      "gradeNow",
+      "createCopy",
       "preview",
       "flag1",
       "flag2",
@@ -178,6 +188,28 @@ export function useBrowseActions(ctx: Omit<ActionContext, "run">, current: Curre
         case "findReplace":
           setDialog({ kind: "find", noteIds: await noteIdsFor(mode, rows) });
           break;
+        case "gradeNow":
+          setDialog({ kind: "grade", cardIds: await cardIdsFor(mode, rows) });
+          break;
+        case "findDuplicates":
+          setDialog({ kind: "dupes" });
+          break;
+        case "clearUnusedTags":
+          toast(await clearUnusedTags());
+          break;
+        case "createCopy": {
+          // Anki copies the current Note into Add, in the Deck the current Card is from.
+          if (!current?.card) break;
+          const note = await core.getNote({ nid: current.noteId! });
+          setAddPrefill({
+            notetypeId: note.notetypeId,
+            deckId: current.card.originalDeckId || current.card.deckId,
+            fields: [...note.fields],
+            tags: [...note.tags],
+          });
+          go({ name: "add" });
+          break;
+        }
         case "preview": {
           const cardIds = await cardIdsFor(mode, rows.length > 1 ? rows : ctx.current !== null ? [ctx.current] : rows);
           const start = current?.card ? Math.max(0, cardIds.indexOf(current.card.id)) : 0;
@@ -370,6 +402,12 @@ export function useBrowseActions(ctx: Omit<ActionContext, "run">, current: Curre
             }}
           />
         );
+        break;
+      case "grade":
+        element = <GradeNowDialog cardIds={dialog.cardIds} onClose={close} />;
+        break;
+      case "dupes":
+        element = <FindDuplicatesDialog onClose={close} onSearch={ctx.search} />;
         break;
       case "preview":
         element = <PreviewDialog cardIds={dialog.cardIds} startIndex={dialog.start} onClose={close} />;

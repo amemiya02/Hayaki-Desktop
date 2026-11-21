@@ -22,6 +22,10 @@ export const tb = makeStrings({
     previewPrev: "Previous Card",
     previewNext: "Next Card",
     searchName: "Name",
+    readingNotes: "Reading Note {done} of {total}",
+    gradeNowLead: "Answer {count} selected Cards as if you had just reviewed them.",
+    resetName: "Reset name",
+    editNotetype: "Edit Note Type",
   },
   zh: {
     selected: "已选择 {count} 项",
@@ -40,6 +44,10 @@ export const tb = makeStrings({
     previewPrev: "上一张卡片",
     previewNext: "下一张卡片",
     searchName: "名称",
+    readingNotes: "正在读取第 {done} 条，共 {total} 条笔记",
+    gradeNowLead: "把选中的 {count} 张卡片当作刚刚复习过来作答。",
+    resetName: "恢复默认名称",
+    editNotetype: "编辑笔记类型",
   },
   ja: {
     selected: "{count} 件を選択中",
@@ -58,5 +66,9 @@ export const tb = makeStrings({
     previewPrev: "前のカード",
     previewNext: "次のカード",
     searchName: "名前",
+    readingNotes: "ノートを読み込み中 {done} / {total}",
+    gradeNowLead: "選択した {count} 枚のカードを、今復習したものとして回答します。",
+    resetName: "名前を初期化",
+    editNotetype: "ノートタイプを編集",
   },
 });
