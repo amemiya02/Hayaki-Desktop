@@ -15,6 +15,8 @@ import { useNav } from "@/lib/nav";
 import { themeColors, themeNames, themeOrder, type Appearance, type ThemeId } from "@/lib/themes";
 import { useResolvedAppearance } from "@/lib/useAppearance";
 import { AnkiPreferencesSections } from "@/screens/preferences";
+import { BackupsSection } from "@/shell/Backups";
+import { SyncPreferencesSection } from "@/shell/Sync";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -120,6 +122,8 @@ export function SettingsScreen() {
         </Section>
 
         <AnkiPreferencesSections />
+        <BackupsSection />
+        <SyncPreferencesSection />
 
         <Section title={t("settings.collection")}>
           <button

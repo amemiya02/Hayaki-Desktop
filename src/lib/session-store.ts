@@ -5,6 +5,7 @@
 import { create } from "zustand";
 
 import { setupI18n } from "./i18n";
+import { beforeProfileClose } from "./lifecycle";
 import {
   appInfo,
   closeProfile,
@@ -68,6 +69,8 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async open(id) {
+    // Another profile closes first, with its sync on close.
+    if (get().profile && get().profile?.id !== id) await beforeProfileClose();
     try {
       const profile = await openProfile(id);
       resetQueries();
@@ -83,6 +86,7 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   async switchProfile() {
+    await beforeProfileClose();
     try {
       await closeProfile();
     } catch {

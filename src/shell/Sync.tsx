@@ -1,13 +1,34 @@
 // Copyright: Hayaki contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-import { ChevronRight, CloudDownload, CloudUpload } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronRight, CloudDownload, CloudUpload, ScrollText } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { Button, cn, Dialog, TextField } from "@/components/ui";
-import { t, tr } from "@/lib/i18n";
+import { Button, cn, Dialog, Spinner, Switch, TextField } from "@/components/ui";
+import { languages, t, tr } from "@/lib/i18n";
+import { canAutoSync, onProfileClose } from "@/lib/lifecycle";
+import { useApp } from "@/lib/session-store";
+import { tl } from "@/lib/strings/lifecycle";
 import { useSync, type FullSyncChoice } from "@/lib/sync";
+
+/** As Anki's `can_auto_sync`, from the store's current state. */
+function autoSyncDue(): boolean {
+  const s = useSync.getState();
+  return canAutoSync({ signedIn: !!s.account, autoSync: s.prefs.autoSync, restored: s.restored });
+}
+
+function MediaLogLink() {
+  return (
+    <button
+      type="button"
+      onClick={() => useSync.getState().showLog(true)}
+      className="mt-1 text-caption font-medium text-accent-ink underline-offset-2 hover:underline"
+    >
+      {tr("sync-media-log-button")}
+    </button>
+  );
+}
 
 type Required = "either" | "upload" | "download";
 
@@ -16,11 +37,8 @@ export function useSyncAction() {
   const [signingIn, setSigningIn] = useState(false);
   const [fullSync, setFullSync] = useState<Required | null>(null);
   const resolver = useRef<((choice: FullSyncChoice) => void) | null>(null);
-  const { account, loaded, load, sync, phase } = useSync();
-
-  useEffect(() => {
-    if (!loaded) void load();
-  }, [loaded, load]);
+  const { account, load, sync, phase } = useSync();
+  const profileId = useApp((s) => s.profile?.id);
 
   const askFullSync = useCallback(
     (required: Required) =>
@@ -42,7 +60,14 @@ export function useSyncAction() {
       const media = s.phase === "media";
       toast.loading(media ? t("sync.media") : tr("sync-syncing"), {
         id,
-        description: s.progress.length ? <ProgressParts parts={s.progress} /> : media ? tr("sync-media-starting") : undefined,
+        description: media ? (
+          <span className="flex flex-col items-start">
+            {s.progress.length ? <ProgressParts parts={s.progress} /> : tr("sync-media-starting")}
+            <MediaLogLink />
+          </span>
+        ) : s.progress.length ? (
+          <ProgressParts parts={s.progress} />
+        ) : undefined,
         action: media
           ? {
               label: tr("sync-abort-button"),
@@ -58,16 +83,51 @@ export function useSyncAction() {
     const state = useSync.getState();
     const clear = { action: undefined };
     if (result === "done") toast.success(tr("sync-collection-complete"), { ...clear, id, description: tr("sync-media-complete") });
+    else if (result === "media-disabled") toast.success(tr("sync-collection-complete"), { ...clear, id, description: undefined });
     else if (result === "media-aborted")
       toast.success(tr("sync-collection-complete"), { ...clear, id, description: tr("sync-media-aborted") });
     else if (result === "media-failed")
-      toast.warning(tr("sync-media-failed"), { ...clear, id, description: state.lastError ?? undefined });
+      toast.warning(tr("sync-media-failed"), {
+        id,
+        description: state.lastError ?? undefined,
+        action: { label: tr("sync-media-log-button"), onClick: () => useSync.getState().showLog(true) },
+      });
     else if (result === "cancelled") toast.dismiss(id);
     else {
       toast.error(t("sync.failed"), { ...clear, id, description: state.lastError ?? undefined });
       if (!state.account) setSigningIn(true);
     }
   }, [sync, askFullSync]);
+
+  // Each profile has its own account and preferences. As in Anki, a profile
+  // that opens syncs at once when syncing on open and close is on.
+  const runRef = useRef(run);
+  runRef.current = run;
+  useEffect(() => {
+    if (!profileId) return;
+    let current = true;
+    load()
+      .then(() => {
+        if (current && autoSyncDue()) void runRef.current();
+      })
+      .catch((error: unknown) => console.error("loading the sync account", error));
+    return () => {
+      current = false;
+    };
+  }, [profileId, load]);
+
+  // And it syncs before the profile closes (switching profiles, restoring a
+  // backup, quitting). A media sync still running is abandoned first; the
+  // sync on close picks it up again.
+  useEffect(
+    () =>
+      onProfileClose(async () => {
+        useSync.getState().abortMedia();
+        await useSync.getState().idle();
+        if (autoSyncDue()) await runRef.current();
+      }),
+    [],
+  );
 
   const choose = (choice: FullSyncChoice) => {
     resolver.current?.(choice);
@@ -85,6 +145,7 @@ export function useSyncAction() {
           void run();
         }}
       />
+      <MediaLogDialog />
       <Dialog
         open={fullSync !== null}
         onOpenChange={(open) => !open && choose("cancel")}
@@ -130,6 +191,116 @@ export function useSyncAction() {
   );
 
   return { run, dialogs, syncing: phase !== "idle", account };
+}
+
+/** Anki's Media Sync Log: the lines of the running or last media sync, with Abort while it runs. */
+function MediaLogDialog() {
+  const { log, logOpen, phase, showLog, abortMedia } = useSync();
+  const list = useRef<HTMLOListElement>(null);
+  const time = new Intl.DateTimeFormat(languages(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+  useEffect(() => {
+    const el = list.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [log, logOpen]);
+
+  return (
+    <Dialog
+      open={logOpen}
+      onOpenChange={showLog}
+      title={tr("sync-media-log-title")}
+      width={520}
+      footer={
+        <>
+          {phase === "media" && <Button onClick={abortMedia}>{tr("sync-abort-button")}</Button>}
+          <Button variant="primary" onClick={() => showLog(false)}>
+            {t("common.close")}
+          </Button>
+        </>
+      }
+    >
+      {log.length === 0 ? (
+        <p className="py-4 text-control text-ink-3">{tl("noLog")}</p>
+      ) : (
+        <ol
+          ref={list}
+          role="log"
+          aria-live="polite"
+          className="selectable max-h-[46vh] overflow-auto rounded-[8px] border border-line bg-surface-2 p-3 text-caption leading-relaxed text-ink-2"
+        >
+          {log.map((entry, i) => (
+            <li key={i} className="flex gap-3">
+              <time className="tabular shrink-0 text-ink-3" dateTime={new Date(entry.at).toISOString()}>
+                {time.format(entry.at)}
+              </time>
+              <span className="min-w-0">{entry.text}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Dialog>
+  );
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mt-8 first:mt-0">
+      <h2 className="mb-2.5 px-1 text-[13px] font-semibold text-ink-2">{title}</h2>
+      <div className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">{children}</div>
+    </section>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-h-[52px] items-center gap-6 px-4 py-2.5">
+      <div className="min-w-0 flex-1 text-[13.5px] text-ink">{label}</div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Anki's Syncing preferences for the open profile. Anki's "Periodically sync
+ * media" is not offered: media syncs with every sync.
+ */
+export function SyncPreferencesSection() {
+  const { prefs, loaded, setPrefs, showLog } = useSync();
+  const save = (change: Parameters<typeof setPrefs>[0]) =>
+    setPrefs(change).catch((error: unknown) => toast.error(String(error instanceof Error ? error.message : error)));
+
+  return (
+    <Section title={tr("preferences-network")}>
+      {!loaded ? (
+        <div className="grid h-[104px] place-items-center">
+          <Spinner />
+        </div>
+      ) : (
+        <>
+          <Row label={tr("preferences-automatically-sync-on-profile-openclose")}>
+            <Switch
+              label={tr("preferences-automatically-sync-on-profile-openclose")}
+              checked={prefs.autoSync}
+              onChange={(v) => void save({ autoSync: v })}
+            />
+          </Row>
+          <Row label={tr("preferences-synchronize-audio-and-images-too")}>
+            <Switch
+              label={tr("preferences-synchronize-audio-and-images-too")}
+              checked={prefs.syncMedia}
+              onChange={(v) => void save({ syncMedia: v })}
+            />
+          </Row>
+          <Row label={tr("sync-media-log-title")}>
+            <Button size="sm" onClick={() => showLog(true)}>
+              <ScrollText />
+              {tr("sync-media-log-button")}
+            </Button>
+          </Row>
+        </>
+      )}
+    </Section>
+  );
 }
 
 /** Each part stays on one line; lines break only between parts. */

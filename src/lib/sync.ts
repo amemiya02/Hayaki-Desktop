@@ -10,6 +10,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { create } from "zustand";
 
 import * as core from "./anki/generated/core";
+import { tr } from "./i18n";
+import { appendLog, type LogEntry } from "./lifecycle";
 import { BackendError_Kind } from "./anki/proto/anki/backend_pb";
 import { CoreError } from "./anki/transport";
 import { SyncCollectionResponse_ChangesRequired } from "./anki/proto/anki/sync_pb";
@@ -22,20 +24,41 @@ export interface SyncAccount {
   currentEndpoint: string | null;
 }
 
+/** Per profile, as Anki keeps them in its profile (`src-tauri/src/profiles.rs`). */
+export interface SyncPrefs {
+  /** Sync when the profile opens and closes. */
+  autoSync: boolean;
+  /** Sync audio and images too. */
+  syncMedia: boolean;
+}
+
+const DEFAULT_PREFS: SyncPrefs = { autoSync: true, syncMedia: true };
+
 export type FullSyncChoice = "upload" | "download" | "cancel";
 
-export type SyncResult = "done" | "media-failed" | "media-aborted" | "cancelled" | "error";
+export type SyncResult = "done" | "media-disabled" | "media-failed" | "media-aborted" | "cancelled" | "error";
 
 type Phase = "idle" | "syncing" | "media";
 
 interface SyncState {
   phase: Phase;
   account: SyncAccount | null;
+  prefs: SyncPrefs;
   loaded: boolean;
+  /** A backup was restored since the profile opened: no syncing on open or close. */
+  restored: boolean;
   progress: string[];
+  /** Anki's Media Sync Log: the lines of the running or last media sync. */
+  log: LogEntry[];
+  logOpen: boolean;
   lastError: string | null;
   lastSynced: number | null;
+  /** Loads the open profile's account and preferences. */
   load(): Promise<void>;
+  setPrefs(prefs: Partial<SyncPrefs>): Promise<void>;
+  showLog(open: boolean): void;
+  /** Resolves once no sync is running. */
+  idle(): Promise<void>;
   signIn(username: string, password: string, endpoint: string | null): Promise<void>;
   signOut(): Promise<void>;
   sync(askFullSync: (required: "either" | "upload" | "download") => Promise<FullSyncChoice>): Promise<SyncResult>;
@@ -44,6 +67,8 @@ interface SyncState {
 
 const getAccount = () => invoke<SyncAccount | null>("sync_account_get");
 const setAccount = (account: SyncAccount | null) => invoke<void>("sync_account_set", { account });
+const getPrefs = () => invoke<SyncPrefs>("sync_prefs_get");
+const savePrefs = (prefs: SyncPrefs) => invoke<void>("sync_prefs_set", { prefs });
 
 function auth(account: SyncAccount) {
   return { hkey: account.hkey, endpoint: account.currentEndpoint ?? account.endpoint ?? undefined };
@@ -91,23 +116,42 @@ export const useSync = create<SyncState>((set, get) => {
     }
   }
 
+  function log(text: string) {
+    set({ log: appendLog(get().log, text, Date.now()) });
+  }
+
   /** The core runs media sync in the background; poll its status until it stops. */
-  async function syncMedia(account: SyncAccount): Promise<"done" | "media-failed" | "media-aborted"> {
+  async function syncMedia(account: SyncAccount): Promise<"done" | "media-disabled" | "media-failed" | "media-aborted"> {
+    if (!get().prefs.syncMedia) {
+      log(tr("sync-media-disabled"));
+      return "media-disabled";
+    }
     set({ phase: "media", progress: [] });
+    log(tr("sync-media-starting"));
     try {
       await core.syncMedia(auth(account));
       for (;;) {
         const status = await core.mediaSyncStatus();
         if (status.progress) {
           const { added, removed, checked } = status.progress;
-          set({ progress: [added, removed, checked].filter(Boolean) });
+          const parts = [added, removed, checked].filter(Boolean);
+          set({ progress: parts });
+          if (parts.length) log(parts.join(", "));
         }
-        if (!status.active) return "done";
+        if (!status.active) {
+          log(tr("sync-media-complete"));
+          return "done";
+        }
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
     } catch (error) {
-      if (error instanceof CoreError && error.backendError.kind === BackendError_Kind.INTERRUPTED) return "media-aborted";
-      set({ lastError: error instanceof Error ? error.message : String(error) });
+      if (error instanceof CoreError && error.backendError.kind === BackendError_Kind.INTERRUPTED) {
+        log(tr("sync-media-aborted"));
+        return "media-aborted";
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      log(`${tr("sync-media-failed")} ${message}`);
+      set({ lastError: message });
       return "media-failed";
     }
   }
@@ -115,13 +159,40 @@ export const useSync = create<SyncState>((set, get) => {
   return {
     phase: "idle",
     account: null,
+    prefs: DEFAULT_PREFS,
     loaded: false,
+    restored: false,
     progress: [],
+    log: [],
+    logOpen: false,
     lastError: null,
     lastSynced: null,
 
     async load() {
-      set({ account: await getAccount(), loaded: true });
+      const [account, prefs] = await Promise.all([getAccount(), getPrefs().catch(() => DEFAULT_PREFS)]);
+      set({ account, prefs, loaded: true, restored: false, log: [], lastError: null, lastSynced: null });
+    },
+
+    async setPrefs(change) {
+      const prefs = { ...get().prefs, ...change };
+      set({ prefs });
+      await savePrefs(prefs);
+    },
+
+    showLog(open) {
+      set({ logOpen: open });
+    },
+
+    idle() {
+      if (get().phase === "idle") return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        const unsubscribe = useSync.subscribe((s) => {
+          if (s.phase === "idle") {
+            unsubscribe();
+            resolve();
+          }
+        });
+      });
     },
 
     async signIn(username, password, endpoint) {
@@ -183,7 +254,10 @@ export const useSync = create<SyncState>((set, get) => {
     },
 
     abortMedia() {
-      if (get().phase === "media") void core.abortMediaSync();
+      if (get().phase !== "media") return;
+      log(tr("sync-media-aborting"));
+      void core.setWantsAbort();
+      void core.abortMediaSync();
     },
   };
 });

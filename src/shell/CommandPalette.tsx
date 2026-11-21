@@ -10,6 +10,7 @@ import {
   Download,
   Eraser,
   FileCog,
+  FolderOpen,
   Filter,
   Image,
   ImagePlus,
@@ -22,6 +23,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  ScrollText,
   Search,
   Settings,
   Undo2,
@@ -53,6 +55,8 @@ import { useExport } from "./ExportDialog";
 import { GLOBAL_KEYS, splitChord } from "./shortcuts";
 import { useShortcutsSheet } from "./ShortcutsSheet";
 import { checkDatabase, checkMedia, createBackup, emptyCards } from "./Tools";
+import { openBackup } from "./Backups";
+import { useSync } from "@/lib/sync";
 
 function flatten(node: DeckTreeNode | undefined, out: DeckTreeNode[] = []): DeckTreeNode[] {
   for (const child of node?.children ?? []) {
@@ -197,6 +201,8 @@ export function CommandPalette({ onSync }: { onSync: () => void }) {
                 <Item icon={<Image />} label={tr("media-check-window-title")} onSelect={run(checkMedia)} />
                 <Item icon={<Eraser />} label={tr("empty-cards-window-title")} onSelect={run(emptyCards)} />
                 <Item icon={<Archive />} label={t("tools.createBackup")} onSelect={run(createBackup)} />
+                <Item icon={<FolderOpen />} label={trLabel("qt-accel-load-backup")} onSelect={run(openBackup)} />
+                <Item icon={<ScrollText />} label={tr("sync-media-log-title")} onSelect={run(() => useSync.getState().showLog(true))} />
               </Group>
               <Group heading={t("settings.appearance")}>
                 {(["system", "light", "dark", "black"] as const).map((a) => (

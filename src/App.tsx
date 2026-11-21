@@ -26,6 +26,7 @@ import { ExportDialog, useExport } from "@/shell/ExportDialog";
 import { ProfileChooser } from "@/shell/ProfileChooser";
 import { isWebViewAccelerator } from "@/shell/accelerators";
 import { ShortcutsSheet } from "@/shell/ShortcutsSheet";
+import { LifecycleHost } from "@/shell/Lifecycle";
 import { ToolsHost } from "@/shell/Tools";
 import { ConfirmHost } from "@/components/confirm";
 import { CardInfoHost } from "@/screens/card-info";
@@ -429,6 +430,7 @@ export function App() {
       <TooltipProvider>
         {status === "ready" ? <Workspace /> : <Boot />}
         <ConfirmHost />
+        <LifecycleHost />
         <ShortcutsSheet />
         <AppToaster />
       </TooltipProvider>
