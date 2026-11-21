@@ -1,10 +1,12 @@
 // Copyright: Hayaki contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-import { BarChart3, ChevronRight, ChevronsUpDown, Filter, Layers, RefreshCw, Search, Settings, Users } from "lucide-react";
+import { BarChart3, ChevronRight, ChevronsUpDown, Filter, ImageMinus, ImagePlus, Layers, RefreshCw, Search, Settings, Users } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
+import { Avatar, chooseAvatar } from "@/components/Avatar";
 import { cn, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, motionTokens } from "@/components/ui";
 import { withChord } from "@/lib/chord";
 import * as core from "@/lib/anki/generated/core";
@@ -203,6 +205,18 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
   const regular = decks.filter((d) => !d.filtered);
   const filtered = decks.filter((d) => d.filtered);
   const name = profile?.name ?? "";
+  const avatar = useApp((s) => s.profiles.find((p) => p.id === s.profile?.id)?.avatar);
+  const setAvatar = useApp((s) => s.setAvatar);
+
+  const changeAvatar = async () => {
+    if (!profile) return;
+    try {
+      const picked = await chooseAvatar();
+      if (picked) await setAvatar(profile.id, picked);
+    } catch (error) {
+      toast.error(t("profile.avatarFailed"), { description: error instanceof Error ? error.message : String(error) });
+    }
+  };
 
   return (
     <nav aria-label="Hayaki" className="flex h-full flex-col bg-sidebar-surface">
@@ -248,9 +262,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
               className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-[7px] px-1.5 text-start transition-colors duration-[var(--dur-fast)] hover:bg-sidebar-hover data-[state=open]:bg-sidebar-hover"
               aria-label={`${tr("profiles-profiles")}: ${name}`}
             >
-              <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-micro font-semibold text-on-accent">
-                {Array.from(name.trim())[0]?.toUpperCase() ?? "?"}
-              </span>
+              <Avatar name={name} src={avatar} className="size-6 text-micro" />
               <span className="min-w-0 flex-1 truncate text-control font-medium text-ink">{name}</span>
               <ChevronsUpDown className="size-3.5 shrink-0 text-ink-3" />
             </button>
@@ -260,6 +272,16 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
               <Users />
               {trLabel("qt-accel-switch-profile")}
             </MenuItem>
+            <MenuItem onSelect={() => void changeAvatar()}>
+              <ImagePlus />
+              {t("profile.setAvatar")}
+            </MenuItem>
+            {avatar && profile && (
+              <MenuItem onSelect={() => void setAvatar(profile.id, null).catch((error) => toast.error(String(error)))}>
+                <ImageMinus />
+                {t("profile.removeAvatar")}
+              </MenuItem>
+            )}
             <MenuSeparator />
             <MenuItem shortcut="Ctrl+P" onSelect={() => go({ name: "settings" })}>
               <Settings />

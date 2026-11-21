@@ -4,6 +4,7 @@
 mod ankiconnect;
 mod core;
 mod lifecycle;
+mod location;
 mod media;
 mod navigation;
 mod plugins;
@@ -32,9 +33,7 @@ fn app_info(app: tauri::AppHandle, core: tauri::State<'_, Core>) -> AppInfo {
     AppInfo {
         version: app.package_info().version.to_string(),
         anki_version: ANKI_VERSION.trim().to_string(),
-        data_dir: app
-            .path()
-            .app_data_dir()
+        data_dir: location::root(&app)
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_default(),
         langs: core.langs(),
@@ -139,6 +138,10 @@ pub fn run() {
             profiles::profile_rename,
             profiles::profile_delete,
             profiles::profile_open,
+            profiles::profile_set_avatar,
+            location::data_folder_get,
+            location::data_folder_check,
+            location::data_folder_set,
             profiles::profile_close,
             profiles::set_core_langs,
             profiles::sync_account_get,

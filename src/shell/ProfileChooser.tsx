@@ -5,10 +5,11 @@
  * Anki's profile window (`aqt/profiles.py`): open, add, rename and delete
  * profiles, and on the very first run a welcome that names the first one.
  */
-import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ImageMinus, ImagePlus, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { toast } from "sonner";
 
+import { Avatar, chooseAvatar } from "@/components/Avatar";
 import { confirm } from "@/components/confirm";
 import { Button, cn, Dialog, IconButton, Kbd, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, onAccentKbd, Spinner, TextField } from "@/components/ui";
 import { localizedDate, t, tr } from "@/lib/i18n";
@@ -19,17 +20,6 @@ import { ts } from "@/lib/strings/shell";
 function errorText(error: unknown): string {
   const text = error instanceof Error ? error.message : String(error);
   return text === "name-exists" ? t("settings.profileExists") : text;
-}
-
-function Avatar({ name, className }: { name: string; className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn("grid size-8 shrink-0 place-items-center rounded-full bg-accent text-control font-semibold text-on-accent", className)}
-    >
-      {Array.from(name.trim())[0]?.toUpperCase() ?? "?"}
-    </span>
-  );
 }
 
 function Welcome() {
@@ -130,7 +120,16 @@ function NameDialog({
 }
 
 function Chooser() {
-  const { profiles, open, rename, remove, createAndOpen } = useApp();
+  const { profiles, open, rename, remove, createAndOpen, setAvatar } = useApp();
+
+  const changeAvatar = async (profile: ProfileMeta) => {
+    try {
+      const avatar = await chooseAvatar();
+      if (avatar) await setAvatar(profile.id, avatar);
+    } catch (error) {
+      toast.error(t("profile.avatarFailed"), { description: errorText(error) });
+    }
+  };
   const [selected, setSelected] = useState(0);
   const [opening, setOpening] = useState<string | null>(null);
   const [naming, setNaming] = useState<{ kind: "new" } | { kind: "rename"; profile: ProfileMeta } | null>(null);
@@ -213,7 +212,7 @@ function Chooser() {
                 "focus-visible:shadow-ring-inset",
               )}
             >
-              <Avatar name={profile.name} />
+              <Avatar name={profile.name} src={profile.avatar} />
               <div className="min-w-0 flex-1">
                 <div className={cn("truncate text-body font-medium", isSelected ? "text-accent-ink" : "text-ink")}>{profile.name}</div>
                 {profile.created > 0 && (
@@ -239,6 +238,16 @@ function Chooser() {
                     <Pencil />
                     {tr("actions-rename")}
                   </MenuItem>
+                  <MenuItem onSelect={() => void changeAvatar(profile)}>
+                    <ImagePlus />
+                    {t("profile.setAvatar")}
+                  </MenuItem>
+                  {profile.avatar && (
+                    <MenuItem onSelect={() => void setAvatar(profile.id, null).catch((error) => toast.error(errorText(error)))}>
+                      <ImageMinus />
+                      {t("profile.removeAvatar")}
+                    </MenuItem>
+                  )}
                   <MenuSeparator />
                   <MenuItem danger shortcut="Del" onSelect={() => void deleteProfile(profile)}>
                     <Trash2 />

@@ -82,7 +82,7 @@ pub struct AnkiConnect {
 impl AnkiConnect {
     /// Loads the settings and starts the server if it is turned on.
     pub fn init(app: &AppHandle) {
-        let path = app.path().app_data_dir().unwrap_or_default().join("ankiconnect.json");
+        let path = crate::location::root(app).unwrap_or_default().join("ankiconnect.json");
         let config = Config::load(&path);
         let state = AnkiConnect {
             shared: Arc::new(Shared { app: app.clone(), path, config: RwLock::new(config), prompts: Prompts::default() }),

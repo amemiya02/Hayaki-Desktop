@@ -139,7 +139,7 @@ impl Paths {
 }
 
 fn paths(app: &AppHandle) -> Result<Paths, String> {
-    app.path().app_data_dir().map(Paths::new).map_err(|err| err.to_string())
+    crate::location::root(app).map(Paths::new)
 }
 
 pub fn plugins_root(app: &AppHandle) -> Option<PathBuf> {
