@@ -3,7 +3,7 @@
 
 import { BarChart3, ChevronRight, ChevronsUpDown, Filter, Layers, RefreshCw, Search, Settings, Users } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { cn, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, motionTokens } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
@@ -11,8 +11,12 @@ import type { DeckTreeNode } from "@/lib/anki/proto/anki/decks_pb";
 import { SetDeckCollapsedRequest_Scope } from "@/lib/anki/proto/anki/decks_pb";
 import { t, tr, trLabel } from "@/lib/i18n";
 import { useNav, type Route } from "@/lib/nav";
-import { leafName, useDeckTree } from "@/lib/queries";
+import { getDeckTree, leafName, useDeckTree } from "@/lib/queries";
 import { useApp } from "@/lib/session-store";
+import { td } from "@/lib/strings/decks";
+import { deckDragHandlers, useDeckDrag, useDropTarget } from "@/screens/decks/drag";
+import { MoveDeckDialog } from "@/screens/decks/MoveDeckDialog";
+import { TOP_LEVEL } from "@/screens/decks/model";
 
 function NavItem({
   icon,
@@ -69,8 +73,27 @@ export function Expand({ open, children, className }: { open: boolean; children:
   );
 }
 
-function DeckBranch({ node, depth, route }: { node: DeckTreeNode; depth: number; route: Route }) {
+/** Shown while a Deck is dragged, so it can be dropped back at the top level. */
+function TopLevelDrop() {
+  const dragging = useDeckDrag((s) => s.source !== null);
+  const drop = useDropTarget(TOP_LEVEL);
+  if (!dragging) return null;
+  return (
+    <div
+      data-deck-drop="0"
+      className={cn(
+        "mb-1 grid h-[30px] place-items-center rounded-[7px] border border-dashed border-line-strong text-caption text-ink-3",
+        drop.valid && "border-transparent bg-accent-soft text-accent-ink shadow-ring-inset",
+      )}
+    >
+      {td("topLevel")}
+    </div>
+  );
+}
+
+function DeckBranch({ node, depth, route, onMove }: { node: DeckTreeNode; depth: number; route: Route; onMove: (node: DeckTreeNode) => void }) {
   const go = useNav((s) => s.go);
+  const drop = useDropTarget(node.deckId);
   const due = node.newCount + node.learnCount + node.reviewCount;
   const active = route.name === "deck" && route.deckId === node.deckId;
   const hasChildren = node.children.length > 0;
@@ -84,14 +107,20 @@ function DeckBranch({ node, depth, route }: { node: DeckTreeNode; depth: number;
   return (
     <li>
       <div
+        data-deck-drop={String(node.deckId)}
+        {...deckDragHandlers(node, getDeckTree)}
         className={cn(
           "group flex h-[30px] items-center rounded-[7px] pe-2 text-control transition-colors duration-[var(--dur-fast)]",
           active ? "bg-accent-soft text-accent-ink" : "text-ink hover:bg-sidebar-hover",
+          drop.isSource && "opacity-45",
+          drop.valid && "bg-accent-soft shadow-ring-inset",
+          drop.over && !drop.valid && "cursor-not-allowed",
         )}
         style={{ paddingInlineStart: 4 + depth * 14 }}
       >
         {hasChildren ? (
           <button
+            data-no-drag
             aria-label={node.collapsed ? "Expand" : "Collapse"}
             aria-expanded={!node.collapsed}
             onClick={toggle}
@@ -106,6 +135,9 @@ function DeckBranch({ node, depth, route }: { node: DeckTreeNode; depth: number;
         )}
         <button
           onClick={() => go({ name: "deck", deckId: node.deckId })}
+          onKeyDown={(e) => {
+            if (e.key.toLowerCase() === "m" && !e.ctrlKey && !e.metaKey && !e.altKey) onMove(node);
+          }}
           className="flex h-full min-w-0 flex-1 items-center gap-2 ps-1 text-start"
           title={node.name}
         >
@@ -119,7 +151,7 @@ function DeckBranch({ node, depth, route }: { node: DeckTreeNode; depth: number;
         <Expand open={!node.collapsed}>
           <ul>
             {node.children.map((child) => (
-              <DeckBranch key={String(child.deckId)} node={child} depth={depth + 1} route={route} />
+              <DeckBranch key={String(child.deckId)} node={child} depth={depth + 1} route={route} onMove={onMove} />
             ))}
           </ul>
         </Expand>
@@ -132,6 +164,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
   const route = useNav((s) => s.route);
   const go = useNav((s) => s.go);
   const { data: tree } = useDeckTree();
+  const [moving, setMoving] = useState<DeckTreeNode | null>(null);
   const profile = useApp((s) => s.profile);
   const switchProfile = useApp((s) => s.switchProfile);
   const decks = tree?.children ?? [];
@@ -141,7 +174,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
 
   return (
     <nav aria-label="Hayaki" className="flex h-full flex-col bg-sidebar-surface">
-      <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3 pt-3">
+      <div data-drag-scroll className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-3 pt-3">
         <NavItem icon={<Layers />} label={t("nav.decks")} shortcut="D" active={route.name === "decks"} onClick={() => go({ name: "decks" })} />
         <NavItem icon={<Search />} label={t("nav.browse")} shortcut="B" active={route.name === "browse"} onClick={() => go({ name: "browse" })} />
         <NavItem icon={<BarChart3 />} label={t("nav.stats")} shortcut="T" active={route.name === "stats"} onClick={() => go({ name: "stats" })} />
@@ -149,9 +182,10 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
         {regular.length > 0 && (
           <>
             <GroupLabel>{t("nav.decks")}</GroupLabel>
+            <TopLevelDrop />
             <ul>
               {regular.map((node) => (
-                <DeckBranch key={String(node.deckId)} node={node} depth={0} route={route} />
+                <DeckBranch key={String(node.deckId)} node={node} depth={0} route={route} onMove={setMoving} />
               ))}
             </ul>
           </>
@@ -166,7 +200,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
             </GroupLabel>
             <ul>
               {filtered.map((node) => (
-                <DeckBranch key={String(node.deckId)} node={node} depth={0} route={route} />
+                <DeckBranch key={String(node.deckId)} node={node} depth={0} route={route} onMove={setMoving} />
               ))}
             </ul>
           </>
@@ -211,6 +245,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
           <Settings />
         </IconButton>
       </div>
+      <MoveDeckDialog key={moving ? String(moving.deckId) : "none"} deck={moving} root={tree} onClose={() => setMoving(null)} />
     </nav>
   );
 }

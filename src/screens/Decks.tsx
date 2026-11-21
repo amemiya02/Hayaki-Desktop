@@ -1,8 +1,8 @@
 // Copyright: Hayaki contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-import { ChevronRight, Download, Filter, FolderPlus, MoreHorizontal, Pencil, Play, Settings2, Trash2, Upload } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronRight, Download, FileText, Filter, FolderInput, FolderPlus, MoreHorizontal, Pencil, Play, Settings2, Trash2, Upload } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Count } from "@/components/Count";
@@ -14,7 +14,12 @@ import { SetDeckCollapsedRequest_Scope } from "@/lib/anki/proto/anki/decks_pb";
 import { t, tr, trLabel } from "@/lib/i18n";
 import { importPackage } from "@/lib/import";
 import { useNav } from "@/lib/nav";
-import { findDeck, leafName, totals, useCurrentDeck, useDeckTree, useStudiedToday } from "@/lib/queries";
+import { findDeck, getDeckTree, leafName, totals, useCurrentDeck, useDeckTree, useStudiedToday } from "@/lib/queries";
+import { td } from "@/lib/strings/decks";
+import { DeckDescriptionDialog } from "@/screens/decks/DeckDescriptionDialog";
+import { deckDragHandlers, useDeckDrag, useDropTarget } from "@/screens/decks/drag";
+import { MoveDeckDialog } from "@/screens/decks/MoveDeckDialog";
+import { TOP_LEVEL } from "@/screens/decks/model";
 import { openFilteredDeck } from "@/screens/filtered";
 import { useExport } from "@/shell/ExportDialog";
 import { Expand } from "@/shell/Sidebar";
@@ -27,13 +32,18 @@ function DeckRow({
   currentId,
   onRename,
   onDelete,
+  onMove,
+  onDescribe,
 }: {
   node: DeckTreeNode;
   depth: number;
   currentId: bigint | undefined;
   onRename: (node: DeckTreeNode) => void;
   onDelete: (node: DeckTreeNode) => void;
+  onMove: (node: DeckTreeNode) => void;
+  onDescribe: (node: DeckTreeNode) => void;
 }) {
+  const drop = useDropTarget(node.deckId);
   const go = useNav((s) => s.go);
   const hasChildren = node.children.length > 0;
   const due = node.newCount + node.learnCount + node.reviewCount;
@@ -50,22 +60,30 @@ function DeckRow({
       <div
         role="row"
         tabIndex={0}
+        data-deck-drop={String(node.deckId)}
+        {...deckDragHandlers(node, getDeckTree)}
         onDoubleClick={() => go({ name: "study", deckId: node.deckId })}
         onKeyDown={(e) => {
           if (e.key === "Enter") go({ name: "study", deckId: node.deckId });
           if (e.key === "ArrowRight" && hasChildren && node.collapsed) toggle();
           if (e.key === "ArrowLeft" && hasChildren && !node.collapsed) toggle();
+          if (e.key.toLowerCase() === "m" && !e.ctrlKey && !e.metaKey && !e.altKey && e.target === e.currentTarget) onMove(node);
         }}
         className={cn(
           COLS,
           "group relative px-3 outline-none transition-colors duration-[var(--dur-fast)]",
           depth === 0 ? "h-11" : "h-10",
           "hover:bg-surface-2 focus-visible:bg-accent-softer focus-visible:outline-none",
+          drop.isSource && "opacity-45",
+          drop.dragging && !drop.over && "hover:bg-transparent",
+          drop.valid && "bg-accent-soft shadow-ring-inset hover:bg-accent-soft",
+          drop.over && !drop.valid && "cursor-not-allowed",
         )}
       >
         <div className="flex min-w-0 items-center gap-1" style={{ paddingLeft: depth * 22 }}>
           {hasChildren ? (
             <button
+              data-no-drag
               aria-label={node.collapsed ? "Expand" : "Collapse"}
               aria-expanded={!node.collapsed}
               onClick={toggle}
@@ -94,7 +112,7 @@ function DeckRow({
         <Count value={node.newCount} kind="new" />
         <Count value={node.learnCount} kind="learn" />
         <Count value={node.reviewCount} kind="due" />
-        <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:opacity-100 group-focus-within:opacity-100">
+        <div data-no-drag className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:opacity-100 group-focus-within:opacity-100">
           <IconButton label={tr("decks-study")} size="sm" disabled={due === 0} onClick={() => go({ name: "study", deckId: node.deckId })}>
             <Play />
           </IconButton>
@@ -117,6 +135,16 @@ function DeckRow({
                 <Pencil />
                 {tr("actions-rename")}
               </MenuItem>
+              <MenuItem shortcut="M" onSelect={() => onMove(node)}>
+                <FolderInput />
+                {td("moveTo")}
+              </MenuItem>
+              {!node.filtered && (
+                <MenuItem onSelect={() => onDescribe(node)}>
+                  <FileText />
+                  {tr("scheduling-description")}
+                </MenuItem>
+              )}
               <MenuSeparator />
               <MenuItem danger onSelect={() => onDelete(node)}>
                 <Trash2 />
@@ -136,11 +164,41 @@ function DeckRow({
               currentId={currentId}
               onRename={onRename}
               onDelete={onDelete}
+              onMove={onMove}
+              onDescribe={onDescribe}
             />
           ))}
         </Expand>
       )}
     </>
+  );
+}
+
+/** The column header doubles as the drop target for "make this a top-level Deck". */
+function TopLevelRow({ className, children }: { className: string; children: ReactNode }) {
+  const drop = useDropTarget(TOP_LEVEL);
+  return (
+    <div role="row" data-deck-drop="0" className={cn(className, drop.valid && "bg-accent-soft text-accent-ink shadow-ring-inset")}>
+      {children}
+    </div>
+  );
+}
+
+/** A strip at the end of the list, shown only while a Deck below the top level is being dragged. */
+function TopLevelDropZone() {
+  const dragging = useDeckDrag((s) => s.source !== null);
+  const drop = useDropTarget(TOP_LEVEL);
+  if (!dragging) return null;
+  return (
+    <div
+      data-deck-drop="0"
+      className={cn(
+        "grid h-12 place-items-center border-t border-dashed border-line-strong text-control text-ink-3",
+        drop.valid && "bg-accent-soft text-accent-ink shadow-ring-inset",
+      )}
+    >
+      {td("dropTop")}
+    </div>
   );
 }
 
@@ -209,6 +267,8 @@ export function DecksScreen() {
   const go = useNav((s) => s.go);
   const [renaming, setRenaming] = useState<DeckTreeNode | null>(null);
   const [creating, setCreating] = useState(false);
+  const [moving, setMoving] = useState<DeckTreeNode | null>(null);
+  const [describing, setDescribing] = useState<bigint | null>(null);
 
   // F creates a filtered Deck, as in Anki's main window.
   useEffect(() => {
@@ -276,7 +336,7 @@ export function DecksScreen() {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div data-drag-scroll className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-[1080px] flex-col gap-6 px-8 pb-12 pt-7">
         <section aria-labelledby="today" className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
           <div className="min-w-[280px] flex-1">
@@ -310,13 +370,13 @@ export function DecksScreen() {
         </section>
 
         <section role="table" aria-label={t("nav.decks")} className="overflow-hidden rounded-[12px] border border-line bg-surface">
-          <div role="row" className={cn(COLS, "h-9 border-b border-line bg-surface-2 px-3 text-caption font-medium text-ink-3")}>
+          <TopLevelRow className={cn(COLS, "h-9 border-b border-line bg-surface-2 px-3 text-caption font-medium text-ink-3")}>
             <span className="pl-7">{tr("decks-deck")}</span>
             <span className="text-center">{tr("actions-new")}</span>
             <span className="text-center">{tr("scheduling-learning")}</span>
             <span className="text-center">{tr("statistics-due-count")}</span>
             <span />
-          </div>
+          </TopLevelRow>
           <div className="divide-y divide-line-soft">
             {decks.map((node) => (
               <DeckRow
@@ -326,12 +386,17 @@ export function DecksScreen() {
                 currentId={current?.id}
                 onRename={setRenaming}
                 onDelete={(n) => void remove(n)}
+                onMove={setMoving}
+                onDescribe={(n) => setDescribing(n.deckId)}
               />
             ))}
           </div>
+          <TopLevelDropZone />
         </section>
       </div>
 
+      <MoveDeckDialog key={moving ? String(moving.deckId) : "none"} deck={moving} root={tree} onClose={() => setMoving(null)} />
+      <DeckDescriptionDialog deckId={describing} onClose={() => setDescribing(null)} />
       <NameDialog
         key={renaming ? String(renaming.deckId) : "none"}
         open={!!renaming}

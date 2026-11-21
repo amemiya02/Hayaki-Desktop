@@ -7,10 +7,10 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
-import { UnburyDeckRequest_Mode } from "@/lib/anki/proto/anki/scheduler_pb";
 import { t, tr } from "@/lib/i18n";
 import { useCurrentDeck, useStudiedToday } from "@/lib/queries";
 import { useSession } from "@/lib/study/session";
+import { hasBuried, useUnbury } from "@/screens/decks/unbury";
 import { openCustomStudy } from "@/screens/filtered";
 
 /** The finished screen: says why there is nothing left and when to come back. */
@@ -19,11 +19,7 @@ export function Finished({ onBack, error }: { onBack: () => void; error: string 
   const { data: studied } = useStudiedToday();
   const { data: deck } = useCurrentDeck();
 
-  const unbury = async () => {
-    if (!deck) return;
-    await core.unburyDeck({ deckId: deck.id, mode: UnburyDeckRequest_Mode.ALL }, { origin: "finished" });
-    await useSession.getState().reload();
-  };
+  const unbury = useUnbury(deck?.id, info, () => useSession.getState().reload());
 
   // C opens Custom Study for the Deck just finished, as on Anki's overview.
   useEffect(() => {
@@ -43,7 +39,7 @@ export function Finished({ onBack, error }: { onBack: () => void; error: string 
     }
     if (info.reviewRemaining) lines.push(tr("scheduling-today-review-limit-reached"));
     if (info.newRemaining) lines.push(tr("scheduling-today-new-limit-reached"));
-    if (info.haveSchedBuried || info.haveUserBuried) lines.push(tr("scheduling-buried-cards-found", { unburyThem: tr("scheduling-unbury-them") }));
+    if (hasBuried(info)) lines.push(tr("scheduling-buried-cards-found", { unburyThem: tr("scheduling-unbury-them") }));
   }
 
   return (
@@ -63,8 +59,8 @@ export function Finished({ onBack, error }: { onBack: () => void; error: string 
         ))}
         {studied && <p className="mt-4 text-caption text-ink-3">{studied}</p>}
         <div className="mt-7 flex flex-wrap justify-center gap-2">
-          {info && (info.haveSchedBuried || info.haveUserBuried) && (
-            <Button size="lg" onClick={() => void unbury()}>
+          {hasBuried(info) && (
+            <Button size="lg" onClick={unbury.request}>
               <Undo2 />
               {tr("studying-unbury")}
             </Button>
@@ -81,6 +77,7 @@ export function Finished({ onBack, error }: { onBack: () => void; error: string 
           </Button>
         </div>
       </div>
+      {unbury.dialog}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 import { useQuery } from "@tanstack/react-query";
-import { BarChart3, Eraser, GraduationCap, Play, RefreshCw, Search, Settings2 } from "lucide-react";
+import { BarChart3, Eraser, GraduationCap, Pencil, Play, RefreshCw, Search, Settings2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -12,12 +12,10 @@ import * as core from "@/lib/anki/generated/core";
 import { t, tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { findDeck, useDeckTree } from "@/lib/queries";
+import { DeckDescription } from "@/screens/decks/DeckDescription";
+import { DeckDescriptionDialog } from "@/screens/decks/DeckDescriptionDialog";
+import { hasBuried, useUnbury } from "@/screens/decks/unbury";
 import { emptyFilteredDeck, openCustomStudy, openFilteredDeck, rebuildFilteredDeck } from "@/screens/filtered";
-
-function plainText(html: string): string {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  return (doc.body.textContent ?? "").trim();
-}
 
 function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -30,6 +28,25 @@ export function DeckOverview({ deckId }: { deckId: bigint }) {
   const node = findDeck(tree, deckId);
   const { data: deck } = useQuery({ queryKey: ["deck", String(deckId)], queryFn: () => core.getDeck({ did: deckId }) });
   const [busy, setBusy] = useState<"rebuild" | "empty" | null>(null);
+  const [editingDescription, setEditingDescription] = useState(false);
+
+  // The core's buried-Card check looks at the current Deck, so make this one current first, as Anki does.
+  const [isCurrent, setIsCurrent] = useState(false);
+  useEffect(() => {
+    let live = true;
+    setIsCurrent(false);
+    void core.setCurrentDeck({ did: deckId }).then(() => live && setIsCurrent(true), () => {});
+    return () => {
+      live = false;
+    };
+  }, [deckId]);
+  const { data: congrats } = useQuery({
+    queryKey: ["congrats", "overview", String(deckId)],
+    queryFn: () => core.congratsInfo(),
+    enabled: isCurrent,
+  });
+  const buried = hasBuried(congrats);
+  const unbury = useUnbury(deckId, congrats);
 
   const due = node ? node.newCount + node.learnCount + node.reviewCount : 0;
   const filtered = !!node?.filtered;
@@ -87,6 +104,9 @@ export function DeckOverview({ deckId }: { deckId: bigint }) {
         case "e":
           if (filtered) void empty();
           break;
+        case "u":
+          if (buried) unbury.request();
+          break;
         default:
           handled = false;
       }
@@ -94,19 +114,27 @@ export function DeckOverview({ deckId }: { deckId: bigint }) {
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [due, deckId, go, node?.name, filtered, options, rebuild, empty]);
+  }, [due, deckId, go, node?.name, filtered, options, rebuild, empty, buried, unbury]);
 
   if (!node) return null;
   const parts = node.name.split("::");
-  const description = deck?.kind.case === "normal" ? plainText(deck.kind.value.description) : "";
+  const normal = deck?.kind.case === "normal" ? deck.kind.value : undefined;
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-[760px] px-8 pb-12 pt-10">
         {parts.length > 1 && <p className="mb-1 text-control text-ink-3">{parts.slice(0, -1).join(" › ")}</p>}
         <h1 className="text-display font-semibold text-ink text-balance">{parts[parts.length - 1]}</h1>
-        {description && (
-          <p className="selectable mt-3 max-w-[62ch] whitespace-pre-line text-body leading-relaxed text-ink-2">{description}</p>
+        {filtered ? (
+          <p className="mt-3 max-w-[62ch] text-body leading-relaxed text-ink-2">
+            {[
+              tr("studying-this-is-a-special-deck-for"),
+              tr("studying-cards-will-be-automatically-returned-to"),
+              tr("studying-deleting-this-deck-from-the-deck"),
+            ].join(" ")}
+          </p>
+        ) : (
+          normal && <DeckDescription className="mt-3" text={normal.description} markdown={normal.markdownDescription} />
         )}
 
         <div className="mt-8 rounded-[12px] border border-line bg-surface p-5">
@@ -146,6 +174,12 @@ export function DeckOverview({ deckId }: { deckId: bigint }) {
                 {tr("actions-custom-study")}
               </Button>
             )}
+            {buried && (
+              <Button size="lg" onClick={unbury.request} title={`${tr("studying-unbury")} (U)`}>
+                <Undo2 />
+                {tr("studying-unbury")}
+              </Button>
+            )}
             <Button size="lg" onClick={options} title={`${tr("actions-options")} (O)`}>
               <Settings2 />
               {filtered ? tr("actions-options") : tr("deck-config-title")}
@@ -160,9 +194,17 @@ export function DeckOverview({ deckId }: { deckId: bigint }) {
               <BarChart3 />
               {t("nav.stats")}
             </Button>
+            {!filtered && (
+              <Button variant="ghost" size="sm" onClick={() => setEditingDescription(true)}>
+                <Pencil />
+                {tr("scheduling-description")}
+              </Button>
+            )}
           </div>
         </div>
       </div>
+      <DeckDescriptionDialog deckId={editingDescription ? deckId : null} onClose={() => setEditingDescription(false)} />
+      {unbury.dialog}
     </div>
   );
 }

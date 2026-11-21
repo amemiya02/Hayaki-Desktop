@@ -38,6 +38,11 @@ export function useDeckTree() {
   });
 }
 
+/** The cached Deck tree, for handlers that must read the latest one (a drag that ends after a refresh). */
+export function getDeckTree(): DeckTreeNode | undefined {
+  return queryClient.getQueryData<DeckTreeNode>(keys.deckTree);
+}
+
 export function useStudiedToday() {
   return useQuery({
     queryKey: keys.studiedToday,
