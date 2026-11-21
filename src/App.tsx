@@ -419,8 +419,9 @@ export function App() {
 
   useEffect(() => {
     void useApp.getState().boot();
-    // Show the window once the first frame is painted in the right colours.
-    requestAnimationFrame(() => void getCurrentWindow().show());
+    // Passive effects run after the first paint, so the window shows in the right colours.
+    // Not inside requestAnimationFrame: WKWebView on macOS never fires it for a hidden window.
+    void getCurrentWindow().show();
   }, []);
 
   return (
