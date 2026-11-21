@@ -1,0 +1,256 @@
+/* The frame around Card Content. Card Templates style the content itself;
+   these rules match upstream Anki's reviewer so templates look the same. */
+
+:root {
+  color-scheme: light;
+  --canvas: #ffffff;
+  --fg: #1b1b1f;
+  --flag-1: #e25252;
+  --flag-2: #ffb347;
+  --flag-3: #54c414;
+  --flag-4: #578cff;
+  --flag-5: #ff82ee;
+  --flag-6: #00d1b5;
+  --flag-7: #9649dd;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
+html {
+  background: transparent;
+}
+
+body {
+  margin: 20px;
+  overflow-wrap: break-word;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: top;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.nightMode {
+  background-color: var(--canvas);
+  color: var(--fg);
+}
+
+/* Without a template background, the card sits on Hayaki's canvas. */
+html.hayaki-canvas body.card {
+  background-color: var(--canvas);
+}
+
+#qa {
+  transition: opacity 60ms linear;
+}
+
+hr {
+  background-color: #8a8a8a55;
+  margin: 1em 0;
+  border: none;
+  height: 1px;
+}
+
+img {
+  max-width: 100%;
+  max-height: 95vh;
+}
+
+li {
+  text-align: start;
+}
+
+pre {
+  text-align: left;
+}
+
+#_flag {
+  position: fixed;
+  right: 10px;
+  top: 0;
+  font-size: 30px;
+  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: black;
+}
+
+[dir="rtl"] #_flag {
+  right: auto;
+  left: 10px;
+}
+
+#_mark {
+  position: fixed;
+  left: 10px;
+  top: 0;
+  font-size: 30px;
+  color: yellow;
+  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: black;
+}
+
+[dir="rtl"] #_mark {
+  left: auto;
+  right: 10px;
+}
+
+#typeans {
+  width: 100%;
+  box-sizing: border-box;
+  line-height: 1.75;
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #8a8a8a88;
+  background: transparent;
+  color: inherit;
+}
+
+#typeans:focus {
+  outline: 2px solid var(--accent, #2c776e);
+  outline-offset: 1px;
+}
+
+code#typeans {
+  white-space: pre-wrap;
+  font-variant-ligatures: none;
+}
+
+.typeGood {
+  background: #afa;
+  color: black;
+}
+
+.typeBad {
+  color: black;
+  background: #faa;
+}
+
+.typeMissed {
+  color: black;
+  background: #ccc;
+}
+
+button {
+  margin: 1em 0.5em;
+}
+
+.replay-button {
+  text-decoration: none;
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 3px;
+  border-radius: 999px;
+}
+
+.replay-button svg {
+  width: 40px;
+  height: 40px;
+}
+
+.replay-button svg circle {
+  fill: #fff;
+  stroke: #414141;
+}
+
+.replay-button svg path {
+  fill: #414141;
+}
+
+.replay-button:focus-visible {
+  outline: 2px solid var(--accent, #2c776e);
+  outline-offset: 2px;
+}
+
+.nightMode .replay-button svg circle {
+  fill: #2b2b30;
+  stroke: #c8c8cc;
+}
+
+.nightMode .replay-button svg path {
+  fill: #c8c8cc;
+}
+
+.nightMode .latex {
+  filter: invert(100%);
+}
+
+.drawing {
+  zoom: 50%;
+}
+
+.nightMode img.drawing {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Image Occlusion (upstream image-occlusion/review.scss): the canvas of masks
+   sits exactly over the image, which keeps its aspect ratio. */
+#image-occlusion-container {
+  position: relative;
+  /* if height-constrained, keep the container centred */
+  margin: 0 auto;
+  /* leave room for the 20px body margin, or short windows truncate the image */
+  max-height: calc(95vh - 40px);
+}
+
+#image-occlusion-container img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* the container sets the size, not the default image limits */
+  max-width: unset;
+  max-height: unset;
+}
+
+#image-occlusion-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #qa {
+    transition: none;
+  }
+}
+
+/* The card page scrolls with the same thin scrollbar as the interface, in the
+   page's own ink (--fg follows the Appearance). scrollbar-width is not
+   inherited, so it is set on every element, as in the interface's app.css;
+   the ::-webkit-scrollbar rules cover WebViews without scrollbar-color. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--fg) 22%, transparent) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--fg) 20%, transparent);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklab, var(--fg) 34%, transparent);
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner,
+::-webkit-scrollbar-button {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- The Hayaki folded card, drawn as geometry from the shared app icon. -->
+  <path d="M14 8h26l16 16v28a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V16a8 8 0 0 1 8-8Z" fill="#FBF7F1" stroke="#2C776E" stroke-width="2.5"/>
+  <path d="M40 8v10a6 6 0 0 0 6 6h10Z" fill="#F47A5B"/>
+  <circle cx="21" cy="37" r="4" fill="#F47A5B"/>
+  <circle cx="41" cy="37" r="4" fill="#F47A5B"/>
+  <path d="M28 41.5q3 3.5 6 0" stroke="#F47A5B" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

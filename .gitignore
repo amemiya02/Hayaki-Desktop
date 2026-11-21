@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.tools/
+build/
+src-tauri/target/
+src-tauri/gen/schemas/
+src/lib/anki/generated/
+src/lib/anki/proto/
+.omc/
+*.log
+.DS_Store
+src-tauri/card/mathjax/
+
+# Impeccable working files (only surfaces/, design.json and config are committed)
+.impeccable/mocks/
+.impeccable/questions/
+.impeccable/review/
+.impeccable/review2/
+.impeccable/brief-app.md
+.impeccable/config.local.json
+# Local Claude Code state
+.claude/settings.local.json

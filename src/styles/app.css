@@ -1,0 +1,474 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Hayaki Desktop tokens.
+   One accent per Theme (shared with Hayaki for iOS and Android); every
+   other colour is a role derived from it and the Appearance. Surfaces read
+   roles, never hex values. The literal values for the Theme accents and
+   study canvases also live in `src/lib/themes.ts`, which the card page and
+   the Theme swatches read; keep the two in step.
+   ------------------------------------------------------------------ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --accent-light: #2c776e;
+  --accent-dark: #7ed6ca;
+  --canvas-light: #ffffff;
+  --canvas-dark: #17191a;
+
+  /* Type. The platform's own UI face, with its optical sizes on Windows 11
+     (Small for captions, Text for reading and controls, Display for the two
+     largest steps) and a CJK face chosen per interface language below. */
+  --font-latin: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue";
+  --font-latin-small: "Segoe UI Variable Small", "Segoe UI", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Helvetica Neue";
+  --font-latin-display: "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont,
+    "SF Pro Display", "Helvetica Neue";
+  --font-cjk: "Microsoft YaHei UI", "PingFang SC", "Yu Gothic UI", "Hiragino Sans", "Noto Sans CJK SC",
+    "Source Han Sans SC";
+  --font-ui: var(--font-latin), var(--font-cjk), system-ui, sans-serif;
+  --font-ui-small: var(--font-latin-small), var(--font-cjk), system-ui, sans-serif;
+  --font-ui-display: var(--font-latin-display), var(--font-cjk), system-ui, sans-serif;
+  --font-code: "Cascadia Mono", "SF Mono", ui-monospace, Consolas, monospace;
+  --font-mono: var(--font-code);
+
+  /* Motion. Every duration and easing in the interface comes from here
+     (Motion reads them too, see `motion` in components/ui.tsx). */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 90ms;
+  --dur-quick: 140ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+
+  /* One tint strength per job. */
+  --tint-pill: 11%;
+  --tint-row: 13%;
+  --tint-halo: 18%;
+
+  /* Light appearance */
+  --accent: var(--accent-light);
+  --on-accent: #ffffff;
+  --bg: #ffffff;
+  --canvas: var(--canvas-light);
+  --sidebar: color-mix(in oklab, var(--accent) 7%, #f2f4f5);
+  --sidebar-hover: color-mix(in oklab, var(--ink) 6%, transparent);
+  --surface: #ffffff;
+  --surface-2: #f6f7f8;
+  --surface-3: #eef0f2;
+  --raised: #ffffff;
+  --line: #e4e7ea;
+  --line-strong: #d3d8dc;
+  --ink: #1b1e20;
+  --ink-2: #555c62;
+  --ink-3: #6f777d;
+  --knob: #ffffff;
+  --accent-soft: color-mix(in oklab, var(--accent) 13%, transparent);
+  --accent-softer: color-mix(in oklab, var(--accent) 7%, transparent);
+  --accent-ink: color-mix(in oklab, var(--accent) 88%, black);
+  --accent-hover: color-mix(in oklab, var(--accent) 90%, var(--ink));
+  --selection: color-mix(in oklab, var(--accent) 22%, transparent);
+  --scrim: rgb(0 0 0 / 0.28);
+  --shadow-pop: 0 8px 28px rgb(16 24 32 / 0.14), 0 1px 3px rgb(16 24 32 / 0.08);
+  --shadow-thumb: 0 1px 2px rgb(16 24 32 / 0.12);
+  --shadow-knob: 0 1px 2px rgb(16 24 32 / 0.25);
+
+  --count-new: #1f5bc4;
+  --count-learn: #b3261e;
+  --count-due: #1b6e3a;
+  --answer-again: #b3261e;
+  --answer-hard: #7a5900;
+  --answer-good: #1b6e3a;
+  --answer-easy: #1f5bc4;
+  /* Young Cards share the due green; mature Cards are a deeper green. Card
+     states never take the Theme accent, so they read the same in every Theme. */
+  --mature: #0e4a26;
+  --danger: #b3261e;
+  --on-danger: #ffffff;
+  /* Note and Card markers, as Anki colours them: marked is indigo, suspended
+     yellow, buried a quiet grey. They never borrow answer or flag colours. */
+  --marked: #5b52cf;
+  --suspended: #a67c00;
+  --buried: #6f777d;
+  --flag-1: #d64545;
+  --flag-2: #d9822b;
+  --flag-3: #3d9a3d;
+  --flag-4: #3b6fd8;
+  --flag-5: #d65bbf;
+  --flag-6: #12a39a;
+  --flag-7: #8a55d6;
+
+  /* Stats series that are not a base signal: relearning is a lighter
+     learning red, reviews in filtered Decks a neutral grey. */
+  --stat-relearn: color-mix(in oklab, var(--count-learn) 50%, var(--surface));
+  --stat-filtered: color-mix(in oklab, var(--ink) 26%, var(--surface));
+
+  /* Derived roles */
+  --line-soft: color-mix(in oklab, var(--line) 60%, transparent);
+  --sidebar-pane: color-mix(in oklab, var(--sidebar) 60%, var(--bg));
+  --ring: 0 0 0 3px var(--accent-soft);
+  --ring-danger: 0 0 0 3px color-mix(in oklab, var(--danger) var(--tint-halo), transparent);
+  /* The focus ring drawn inside rows and list items, where an outline would be clipped. */
+  --ring-inset: inset 0 0 0 2px var(--accent);
+
+  /* Window material. Opaque unless the shell confirms an OS backdrop (Mica on
+     Windows 11, vibrancy on macOS), and always opaque in Black. */
+  --window: var(--bg);
+  --sidebar-surface: var(--sidebar);
+
+  color-scheme: light;
+}
+
+:root.dark {
+  --accent: var(--accent-dark);
+  --on-accent: #0f1414;
+  --bg: #141516;
+  --canvas: var(--canvas-dark);
+  --sidebar: color-mix(in oklab, var(--accent) 6%, #1c1e20);
+  --sidebar-hover: color-mix(in oklab, white 5%, transparent);
+  --surface: #17191a;
+  --surface-2: #1e2022;
+  --surface-3: #26292b;
+  --raised: #222527;
+  --line: #2a2d30;
+  --line-strong: #383c40;
+  --ink: #e8eaeb;
+  --ink-2: #b2b8bc;
+  --ink-3: #959ca1;
+  --knob: #f4f5f6;
+  --accent-soft: color-mix(in oklab, var(--accent) 24%, transparent);
+  --accent-softer: color-mix(in oklab, var(--accent) 9%, transparent);
+  --accent-ink: var(--accent);
+  --accent-hover: color-mix(in oklab, var(--accent) 88%, white);
+  --selection: color-mix(in oklab, var(--accent) 32%, transparent);
+  --scrim: rgb(0 0 0 / 0.5);
+  --shadow-pop: 0 10px 32px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-thumb: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-knob: 0 1px 2px rgb(0 0 0 / 0.45);
+
+  --count-new: #a8c7fa;
+  --count-learn: #f2b8b5;
+  --count-due: #8bd8a0;
+  --answer-again: #f2b8b5;
+  --answer-hard: #f0c36d;
+  --answer-good: #8bd8a0;
+  --answer-easy: #a8c7fa;
+  --mature: #3f9c5f;
+  --danger: #f2b8b5;
+  --on-danger: #3b0f0c;
+  --marked: #b3a8f7;
+  --suspended: #f0d26a;
+  --buried: #959ca1;
+  --flag-1: #f07a7a;
+  --flag-2: #f2a65e;
+  --flag-3: #6cc46c;
+  --flag-4: #7aa2f0;
+  --flag-5: #ec8fd8;
+  --flag-6: #4fd0c6;
+  --flag-7: #b48cf0;
+  /* Held at 3:1 or more on the stats panels (surface #17191a: 5.6 and 4.5;
+     raised #222527: 4.9 and 4.0). Mixing toward the surface, as Light does,
+     drops them under 3:1 here. */
+  --stat-relearn: #cf7a74;
+  --stat-filtered: #7d8285;
+
+  --tint-row: 16%;
+  --tint-pill: 14%;
+
+  color-scheme: dark;
+}
+
+/* Black reuses Dark's accents and signals over true black. */
+:root[data-appearance="black"] {
+  --bg: #000000;
+  --canvas: #000000;
+  --sidebar: color-mix(in oklab, var(--accent) 5%, #0b0c0d);
+  --surface: #000000;
+  --surface-2: #0f1011;
+  --surface-3: #18191b;
+  --raised: #141516;
+  --line: #222426;
+  --line-strong: #2e3134;
+  /* 6.7:1 and 5.4:1 on black. */
+  --stat-relearn: #cf7a74;
+  --stat-filtered: #7d8285;
+}
+
+/* An OS backdrop shows through the sidebar only; the work area stays opaque.
+   The sidebar is an opaque Theme tint over a translucent neutral, so both the
+   Theme and the backdrop read through (premultiplied: about 12% accent at 58%
+   cover in Light, 14% at 49% in Dark). The neutral stays opaque enough that
+   ink-2 labels keep 4.5:1 over Mica's lightest and darkest renderings of
+   near-black and near-white wallpapers (#c8c8c8 Light, #3a3a3a Dark). */
+:root[data-material]:not([data-appearance="black"]) {
+  --window: transparent;
+  --sidebar-surface: color-mix(in oklab, var(--accent) 7%, rgb(242 244 245 / 0.55));
+}
+:root.dark[data-material]:not([data-appearance="black"]) {
+  --sidebar-surface: color-mix(in oklab, var(--accent) 7%, rgb(28 30 32 / 0.45));
+}
+
+/* CJK faces per interface language. */
+:root:lang(zh) {
+  --font-cjk: "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC";
+}
+:root:lang(zh-TW),
+:root:lang(zh-HK),
+:root:lang(zh-Hant) {
+  --font-cjk: "Microsoft JhengHei UI", "PingFang TC", "Noto Sans CJK TC", "Source Han Sans TC";
+}
+:root:lang(ja) {
+  --font-cjk: "Yu Gothic UI", "Hiragino Sans", "Noto Sans CJK JP", "Source Han Sans JP";
+}
+:root:lang(ko) {
+  --font-cjk: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Source Han Sans KR";
+}
+
+/* Microsoft YaHei UI and JhengHei UI ship Regular and Bold only, so a 600
+   heading draws its Han glyphs Bold beside a true semibold Latin and the
+   digits look light. On Windows the semibold step moves toward Bold so
+   both scripts carry the same colour; Yu Gothic UI and the macOS faces have
+   a real semibold and keep 600. */
+:root[data-platform="windows"]:lang(zh) {
+  --font-weight-semibold: 660;
+}
+
+/* The ten Themes. Paper and Midnight also set the study canvas. */
+:root[data-theme="hayaki"] { --accent-light: #2c776e; --accent-dark: #7ed6ca; }
+:root[data-theme="sakura"] { --accent-light: #b04663; --accent-dark: #ff9db7; }
+:root[data-theme="matcha"] { --accent-light: #50743f; --accent-dark: #a8cf8e; }
+:root[data-theme="ocean"] { --accent-light: #0a6e9e; --accent-dark: #5ec4f0; }
+:root[data-theme="indigo"] { --accent-light: #3a5bd9; --accent-dark: #8fa8ff; }
+:root[data-theme="wisteria"] { --accent-light: #745ab9; --accent-dark: #b9a3f5; }
+:root[data-theme="amber"] { --accent-light: #916019; --accent-dark: #f5c451; }
+:root[data-theme="sumi"] { --accent-light: #4a4a4f; --accent-dark: #c7c7cc; }
+:root[data-theme="paper"] {
+  --accent-light: #8a5a2b; --accent-dark: #d9a86c;
+  --canvas-light: #f6f1e7; --canvas-dark: #1e1a15;
+}
+:root[data-theme="midnight"] {
+  --accent-light: #1a757f; --accent-dark: #5ee6ee;
+  --canvas-light: #eef3fa; --canvas-dark: #0b1426;
+}
+
+@theme inline {
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-softer: var(--accent-softer);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-hover: var(--accent-hover);
+  --color-bg: var(--bg);
+  --color-window: var(--window);
+  --color-canvas: var(--canvas);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-surface: var(--sidebar-surface);
+  --color-sidebar-pane: var(--sidebar-pane);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-knob: var(--knob);
+  --color-new: var(--count-new);
+  --color-learn: var(--count-learn);
+  --color-due: var(--count-due);
+  --color-mature: var(--mature);
+  --color-again: var(--answer-again);
+  --color-hard: var(--answer-hard);
+  --color-good: var(--answer-good);
+  --color-easy: var(--answer-easy);
+  --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
+  --color-marked: var(--marked);
+  --color-suspended: var(--suspended);
+  --color-buried: var(--buried);
+  --color-flag-1: var(--flag-1);
+  --color-flag-2: var(--flag-2);
+  --color-flag-3: var(--flag-3);
+  --color-flag-4: var(--flag-4);
+  --color-flag-5: var(--flag-5);
+  --color-flag-6: var(--flag-6);
+  --color-flag-7: var(--flag-7);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-thumb: var(--shadow-thumb);
+  --shadow-knob: var(--shadow-knob);
+  --shadow-ring: var(--ring);
+  --shadow-ring-danger: var(--ring-danger);
+  --shadow-ring-inset: var(--ring-inset);
+  --ease-out: var(--ease-out);
+  --ease-standard: var(--ease-standard);
+}
+
+/* The type scale. Hierarchy is size and weight only (DESIGN.md). */
+@theme {
+  --text-micro: 11px;
+  --text-micro--line-height: 1.35;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.45;
+  --text-control: 13px;
+  --text-control--line-height: 1.45;
+  --text-body: 14px;
+  --text-body--line-height: 1.5;
+  --text-title: 15px;
+  --text-title--line-height: 1.4;
+  --text-heading: 18px;
+  --text-heading--line-height: 1.35;
+  --text-headline: 22px;
+  --text-headline--line-height: 1.3;
+  --text-display: 28px;
+  --text-display--line-height: 1.2;
+
+  --animate-fade-in: fade-in var(--dur-quick) var(--ease-out);
+  --animate-pop-in: pop-in var(--dur-quick) var(--ease-out);
+  --animate-dialog-in: dialog-in var(--dur) var(--ease-out);
+  --animate-rise-in: rise-in var(--dur-slow) var(--ease-out) both;
+  --animate-rise-quick: rise-in var(--dur-quick) var(--ease-out) both;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: scale(0.97) translateY(-2px); }
+  }
+  @keyframes dialog-in {
+    from { opacity: 0; transform: scale(0.96); }
+  }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(6px); }
+  }
+}
+
+/* ------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------ */
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.45;
+    background: var(--window);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-kerning: normal;
+    font-optical-sizing: auto;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+
+  body {
+    margin: 0;
+    background: var(--window);
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  .selectable {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: auto;
+  }
+
+  ::selection {
+    background: var(--selection);
+    color: inherit;
+  }
+
+  input,
+  textarea {
+    caret-color: var(--accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  button {
+    cursor: default;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  /* No native spin arrows: numbers use NumberField's steppers (components/ui.tsx). */
+  input[type="number"] {
+    appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Scrollbars carry the palette instead of the browser's defaults. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--ink) 22%, transparent) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--ink) 20%, transparent);
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--ink) 34%, transparent);
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+      animation-delay: 0ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Optical sizes ride on the scale; `:where` keeps any font-* class in charge. */
+  :where(.text-micro, .text-caption) {
+    font-family: var(--font-ui-small);
+  }
+  :where(.text-headline, .text-display) {
+    font-family: var(--font-ui-display);
+  }
+}

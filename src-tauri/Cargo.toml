@@ -1,0 +1,65 @@
+# Hayaki for desktop: the Tauri shell around upstream Anki's Rust core.
+# Upstream Anki lives unpatched in ../vendor/anki and is used through path
+# dependencies. Cargo.lock was seeded from upstream's lock file, so the core
+# builds with the dependency versions upstream tested.
+
+[workspace]
+members = ["codegen"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[workspace.dependencies]
+anki = { path = "../vendor/anki/rslib", features = ["rustls"] }
+anki_proto = { path = "../vendor/anki/rslib/proto" }
+anki_proto_gen = { path = "../vendor/anki/rslib/proto_gen" }
+anyhow = "1.0.98"
+prost = "0.13"
+prost-reflect = "0.14.7"
+
+[package]
+name = "hayaki"
+version = "0.1.0"
+description = "Hayaki for desktop"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "hayaki_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+anki.workspace = true
+anki_proto.workspace = true
+prost.workspace = true
+anyhow.workspace = true
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sys-locale = "0.3"
+percent-encoding = "2"
+mime_guess = "2"
+include_dir = "0.7"
+
+[profile.dev]
+# The core is slow unoptimised; optimise dependencies even in debug builds.
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+# A panic inside the core must unwind so the bridge can catch it and return an
+# error to the interface. Never set panic = "abort".
+panic = "unwind"
+codegen-units = 1
+lto = "thin"

@@ -1,0 +1,62 @@
+// Copyright: Hayaki contributors
+// License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
+
+/** Strings the Browse screen adds to Anki's own. */
+import { makeStrings } from "../i18n";
+
+export const tb = makeStrings({
+  en: {
+    selected: "{count} selected",
+    selectedLead: "Actions apply to every selected row. Choose one row to edit its Note.",
+    columns: "Columns",
+    showFilters: "Show filters",
+    hideFilters: "Hide filters",
+    nothingSelected: "Select a row to edit its Note.",
+    onlyNew: "Only new Cards can be repositioned.",
+    loadFailed: "This row could not be loaded.",
+    flagNone: "Remove flag",
+    resizeColumn: "Resize column",
+    resizePane: "Resize editor",
+    sortAscending: "Sorted ascending",
+    sortDescending: "Sorted descending",
+    previewPrev: "Previous Card",
+    previewNext: "Next Card",
+    searchName: "Name",
+  },
+  zh: {
+    selected: "已选择 {count} 项",
+    selectedLead: "操作会作用于所有选中的行。只选一行即可编辑它的笔记。",
+    columns: "列",
+    showFilters: "显示筛选栏",
+    hideFilters: "隐藏筛选栏",
+    nothingSelected: "选择一行以编辑它的笔记。",
+    onlyNew: "只有新卡片可以重新排序。",
+    loadFailed: "无法载入这一行。",
+    flagNone: "移除旗标",
+    resizeColumn: "调整列宽",
+    resizePane: "调整编辑器宽度",
+    sortAscending: "升序排列",
+    sortDescending: "降序排列",
+    previewPrev: "上一张卡片",
+    previewNext: "下一张卡片",
+    searchName: "名称",
+  },
+  ja: {
+    selected: "{count} 件を選択中",
+    selectedLead: "操作は選択したすべての行に適用されます。1 行だけ選ぶとノートを編集できます。",
+    columns: "列",
+    showFilters: "フィルタを表示",
+    hideFilters: "フィルタを隠す",
+    nothingSelected: "行を選ぶとノートを編集できます。",
+    onlyNew: "並べ替えできるのは新規カードだけです。",
+    loadFailed: "この行を読み込めませんでした。",
+    flagNone: "フラグを外す",
+    resizeColumn: "列の幅を変更",
+    resizePane: "エディタの幅を変更",
+    sortAscending: "昇順",
+    sortDescending: "降順",
+    previewPrev: "前のカード",
+    previewNext: "次のカード",
+    searchName: "名前",
+  },
+});

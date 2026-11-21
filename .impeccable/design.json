@@ -1,0 +1,2158 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-21T09:59:19.693Z",
+  "title": "Design System: Hayaki Desktop",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Hayaki Teal",
+        "canonical": "#2c776e",
+        "tonalRamp": [
+          "#00100d",
+          "#002c28",
+          "#134c46",
+          "#2a6e66",
+          "#4e9087",
+          "#7bb1a9",
+          "#a7d4cd",
+          "#d4f7f1"
+        ]
+      },
+      "accent-dark": {
+        "role": "primary",
+        "displayName": "Hayaki Teal (Dark)",
+        "canonical": "#7ed6ca",
+        "tonalRamp": [
+          "#00100d",
+          "#002d28",
+          "#004d46",
+          "#167067",
+          "#419288",
+          "#72b3aa",
+          "#a1d5cd",
+          "#d0f8f2"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "On Accent",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "on-accent-dark": {
+        "role": "primary",
+        "displayName": "On Accent (Dark)",
+        "canonical": "#0f1414",
+        "tonalRamp": [
+          "#090c0c",
+          "#222626",
+          "#3e4343",
+          "#5d6262",
+          "#7e8484",
+          "#a1a6a6",
+          "#c6caca",
+          "#ecefef"
+        ]
+      },
+      "accent-ink": {
+        "role": "primary",
+        "displayName": "Accent Ink",
+        "canonical": "color-mix(in oklab, var(--accent) 88%, black)",
+        "tonalRamp": [
+          "#000f0d",
+          "#062c28",
+          "#1d4b46",
+          "#346d66",
+          "#568e87",
+          "#81b0a9",
+          "#acd2cd",
+          "#d8f6f1"
+        ],
+        "note": "The frontmatter hex is this formula resolved for the Hayaki Theme; the formula is normative."
+      },
+      "accent-hover": {
+        "role": "primary",
+        "displayName": "Accent Hover",
+        "canonical": "color-mix(in oklab, var(--accent) 90%, var(--ink))",
+        "tonalRamp": [
+          "#00100d",
+          "#002c28",
+          "#004b45",
+          "#286a63",
+          "#4b8a83",
+          "#71aba4",
+          "#a5cec8",
+          "#e5f2f0"
+        ],
+        "note": "The frontmatter hex is this formula resolved for the Hayaki Theme; the formula is normative."
+      },
+      "accent-hover-dark": {
+        "role": "primary",
+        "displayName": "Accent Hover (Dark)",
+        "canonical": "color-mix(in oklab, var(--accent) 88%, white)",
+        "tonalRamp": [
+          "#00110d",
+          "#002e28",
+          "#004c45",
+          "#196c63",
+          "#408c83",
+          "#69ada4",
+          "#a0cfc8",
+          "#e3f2f0"
+        ],
+        "note": "The frontmatter hex is this formula resolved for the Hayaki Theme; the formula is normative."
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Tinted Source List",
+        "canonical": "color-mix(in oklab, var(--accent) 7%, #f2f4f5)",
+        "tonalRamp": [
+          "#090c0c",
+          "#222626",
+          "#3f4343",
+          "#5d6262",
+          "#7e8484",
+          "#a1a6a6",
+          "#c6caca",
+          "#ecefef"
+        ],
+        "note": "The frontmatter hex is this formula resolved for the Hayaki Theme; the formula is normative."
+      },
+      "sidebar-dark": {
+        "role": "neutral",
+        "displayName": "Tinted Source List (Dark)",
+        "canonical": "color-mix(in oklab, var(--accent) 6%, #1c1e20)",
+        "tonalRamp": [
+          "#090c0c",
+          "#222627",
+          "#3f4344",
+          "#5d6264",
+          "#7e8386",
+          "#a1a6a8",
+          "#c6cacc",
+          "#eceff0"
+        ],
+        "note": "The frontmatter hex is this formula resolved for the Hayaki Theme; the formula is normative."
+      },
+      "sidebar-black": {
+        "role": "neutral",
+        "displayName": "Tinted Source List (Black)",
+        "canonical": "color-mix(in oklab, var(--accent) 5%, #0b0c0d)",
+        "tonalRamp": [
+          "#0a0c0c",
+          "#232626",
+          "#3f4343",
+          "#5e6262",
+          "#7f8383",
+          "#a2a6a6",
+          "#c6caca",
+          "#ecefef"
+        ],
+        "note": "The frontmatter hex is this formula resolved for the Hayaki Theme; the formula is normative."
+      },
+      "sidebar-material": {
+        "role": "neutral",
+        "displayName": "Sidebar Material",
+        "canonical": "color-mix(in oklab, var(--accent) 7%, rgb(242 244 245 / 0.55))",
+        "tonalRamp": [
+          "#00100d",
+          "#002d28",
+          "#004c44",
+          "#1d6b62",
+          "#438c82",
+          "#6bada3",
+          "#a2cfc8",
+          "#e4f2f0"
+        ],
+        "note": "Translucent: applies only when the document carries data-material (Mica on Windows 11, vibrancy on macOS) and the Appearance is not Black. The ramp is of the accent."
+      },
+      "sidebar-material-dark": {
+        "role": "neutral",
+        "displayName": "Sidebar Material (Dark)",
+        "canonical": "color-mix(in oklab, var(--accent) 7%, rgb(28 30 32 / 0.45))",
+        "tonalRamp": [
+          "#00110e",
+          "#002f28",
+          "#004e45",
+          "#006d64",
+          "#328e84",
+          "#5fafa4",
+          "#9bd1c8",
+          "#e2f3f0"
+        ],
+        "note": "Translucent: applies only when the document carries data-material (Mica on Windows 11, vibrancy on macOS) and the Appearance is not Black. The ramp is of the accent."
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Work Area",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Group Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "surface-2": {
+        "role": "neutral",
+        "displayName": "Recessed",
+        "canonical": "#f6f7f8",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#414243",
+          "#606162",
+          "#818283",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#eeeeef"
+        ]
+      },
+      "surface-3": {
+        "role": "neutral",
+        "displayName": "Deep Recessed",
+        "canonical": "#eef0f2",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#a4a5a7",
+          "#c8c9ca",
+          "#edeeef"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Floating Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e4e7ea",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242527",
+          "#404244",
+          "#5f6164",
+          "#808385",
+          "#a3a5a7",
+          "#c7c9cb",
+          "#edeff0"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Strong Hairline",
+        "canonical": "#d3d8dc",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232527",
+          "#3f4245",
+          "#5e6265",
+          "#7f8386",
+          "#a2a5a8",
+          "#c6c9cc",
+          "#eceff1"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1b1e20",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#232527",
+          "#404244",
+          "#5e6264",
+          "#7f8385",
+          "#a2a5a8",
+          "#c7c9cb",
+          "#edeff0"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Secondary Ink",
+        "canonical": "#555c62",
+        "tonalRamp": [
+          "#090b0e",
+          "#222629",
+          "#3e4347",
+          "#5c6268",
+          "#7c8389",
+          "#a0a6ab",
+          "#c5cace",
+          "#ebeff3"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#6f777d",
+        "tonalRamp": [
+          "#090c0e",
+          "#212629",
+          "#3d4347",
+          "#5b6268",
+          "#7c8389",
+          "#9fa6ab",
+          "#c4cace",
+          "#ebeff2"
+        ]
+      },
+      "knob": {
+        "role": "neutral",
+        "displayName": "Switch Knob",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "bg-dark": {
+        "role": "neutral",
+        "displayName": "Bg Dark",
+        "canonical": "#141516",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818284",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#eeeeef"
+        ]
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Surface Dark",
+        "canonical": "#17191a",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#404243",
+          "#5f6263",
+          "#808384",
+          "#a3a5a6",
+          "#c8c9ca",
+          "#edefef"
+        ]
+      },
+      "surface-2-dark": {
+        "role": "neutral",
+        "displayName": "Surface 2 Dark",
+        "canonical": "#1e2022",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#404244",
+          "#5f6164",
+          "#808385",
+          "#a3a5a7",
+          "#c7c9cb",
+          "#edeff0"
+        ]
+      },
+      "surface-3-dark": {
+        "role": "neutral",
+        "displayName": "Surface 3 Dark",
+        "canonical": "#26292b",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#232527",
+          "#404244",
+          "#5e6264",
+          "#7f8385",
+          "#a2a5a7",
+          "#c7c9cb",
+          "#edeff0"
+        ]
+      },
+      "raised-dark": {
+        "role": "neutral",
+        "displayName": "Raised Dark",
+        "canonical": "#222527",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#232527",
+          "#404244",
+          "#5e6264",
+          "#7f8385",
+          "#a2a5a7",
+          "#c7c9cb",
+          "#edeff0"
+        ]
+      },
+      "line-dark": {
+        "role": "neutral",
+        "displayName": "Line Dark",
+        "canonical": "#2a2d30",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232527",
+          "#404245",
+          "#5e6265",
+          "#7f8386",
+          "#a2a5a8",
+          "#c7c9cc",
+          "#edeff1"
+        ]
+      },
+      "line-strong-dark": {
+        "role": "neutral",
+        "displayName": "Line Strong Dark",
+        "canonical": "#383c40",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232528",
+          "#3f4246",
+          "#5e6266",
+          "#7f8387",
+          "#a2a5a9",
+          "#c6c9cd",
+          "#eceff1"
+        ]
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "Ink Dark",
+        "canonical": "#e8eaeb",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818283",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#eeeeef"
+        ]
+      },
+      "ink-2-dark": {
+        "role": "neutral",
+        "displayName": "Ink 2 Dark",
+        "canonical": "#b2b8bc",
+        "tonalRamp": [
+          "#090b0d",
+          "#232527",
+          "#3f4345",
+          "#5d6265",
+          "#7e8387",
+          "#a1a6a9",
+          "#c6cacc",
+          "#eceff1"
+        ]
+      },
+      "ink-3-dark": {
+        "role": "neutral",
+        "displayName": "Ink 3 Dark",
+        "canonical": "#959ca1",
+        "tonalRamp": [
+          "#090b0d",
+          "#222628",
+          "#3e4346",
+          "#5c6266",
+          "#7d8388",
+          "#a0a6aa",
+          "#c5cacd",
+          "#ebeff2"
+        ]
+      },
+      "knob-dark": {
+        "role": "neutral",
+        "displayName": "Switch Knob (Dark)",
+        "canonical": "#f4f5f6",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#232425",
+          "#3f4041",
+          "#5d5e5e",
+          "#7c7d7e",
+          "#9e9e9f",
+          "#c3c4c5",
+          "#eeeeef"
+        ]
+      },
+      "bg-black": {
+        "role": "neutral",
+        "displayName": "Bg Black",
+        "canonical": "#000000",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "surface-2-black": {
+        "role": "neutral",
+        "displayName": "Surface 2 Black",
+        "canonical": "#0f1011",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818284",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#eeeeef"
+        ]
+      },
+      "surface-3-black": {
+        "role": "neutral",
+        "displayName": "Surface 3 Black",
+        "canonical": "#18191b",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414244",
+          "#606163",
+          "#818285",
+          "#a4a5a7",
+          "#c8c9cb",
+          "#eeeef0"
+        ]
+      },
+      "raised-black": {
+        "role": "neutral",
+        "displayName": "Raised Black",
+        "canonical": "#141516",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818284",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#eeeeef"
+        ]
+      },
+      "line-black": {
+        "role": "neutral",
+        "displayName": "Line Black",
+        "canonical": "#222426",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#404244",
+          "#5f6164",
+          "#808385",
+          "#a3a5a7",
+          "#c8c9cb",
+          "#edeff0"
+        ]
+      },
+      "line-strong-black": {
+        "role": "neutral",
+        "displayName": "Line Strong Black",
+        "canonical": "#2e3134",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#232527",
+          "#404245",
+          "#5e6265",
+          "#7f8386",
+          "#a2a5a8",
+          "#c7c9cc",
+          "#edeff1"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Study Canvas",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "canvas-dark": {
+        "role": "neutral",
+        "displayName": "Study Canvas (Dark)",
+        "canonical": "#17191a",
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#404243",
+          "#5f6263",
+          "#808384",
+          "#a3a5a6",
+          "#c8c9ca",
+          "#edefef"
+        ]
+      },
+      "count-new": {
+        "role": "secondary",
+        "displayName": "Anki New Blue",
+        "canonical": "#1f5bc4",
+        "tonalRamp": [
+          "#00052e",
+          "#001f5a",
+          "#103c89",
+          "#255bbc",
+          "#467fe2",
+          "#72a4fb",
+          "#a0caff",
+          "#cef0ff"
+        ]
+      },
+      "count-learn": {
+        "role": "secondary",
+        "displayName": "Anki Learning Red",
+        "canonical": "#b3261e",
+        "tonalRamp": [
+          "#260000",
+          "#4f0000",
+          "#7c130e",
+          "#ab2c23",
+          "#d35245",
+          "#f08072",
+          "#ffad9f",
+          "#ffd9cd"
+        ]
+      },
+      "count-due": {
+        "role": "secondary",
+        "displayName": "Anki Due Green",
+        "canonical": "#1b6e3a",
+        "tonalRamp": [
+          "#001101",
+          "#002e11",
+          "#124f29",
+          "#2a7241",
+          "#4e9462",
+          "#7bb589",
+          "#a7d7b2",
+          "#d4fadc"
+        ]
+      },
+      "mature": {
+        "role": "secondary",
+        "displayName": "Mature Green",
+        "canonical": "#0e4a26",
+        "tonalRamp": [
+          "#001003",
+          "#0c2c17",
+          "#234c30",
+          "#3b6e4b",
+          "#5d906b",
+          "#86b291",
+          "#b0d4b8",
+          "#dbf7e1"
+        ]
+      },
+      "answer-again": {
+        "role": "secondary",
+        "displayName": "Again",
+        "canonical": "#b3261e",
+        "tonalRamp": [
+          "#260000",
+          "#4f0000",
+          "#7c130e",
+          "#ab2c23",
+          "#d35245",
+          "#f08072",
+          "#ffad9f",
+          "#ffd9cd"
+        ]
+      },
+      "answer-hard": {
+        "role": "secondary",
+        "displayName": "Hard Amber",
+        "canonical": "#7a5900",
+        "tonalRamp": [
+          "#150800",
+          "#342100",
+          "#563d00",
+          "#7a5c15",
+          "#9d7d3c",
+          "#bda16c",
+          "#ddc69a",
+          "#ffecca"
+        ]
+      },
+      "answer-good": {
+        "role": "secondary",
+        "displayName": "Good",
+        "canonical": "#1b6e3a",
+        "tonalRamp": [
+          "#001101",
+          "#002e11",
+          "#124f29",
+          "#2a7241",
+          "#4e9462",
+          "#7bb589",
+          "#a7d7b2",
+          "#d4fadc"
+        ]
+      },
+      "answer-easy": {
+        "role": "secondary",
+        "displayName": "Easy",
+        "canonical": "#1f5bc4",
+        "tonalRamp": [
+          "#00052e",
+          "#001f5a",
+          "#103c89",
+          "#255bbc",
+          "#467fe2",
+          "#72a4fb",
+          "#a0caff",
+          "#cef0ff"
+        ]
+      },
+      "count-new-dark": {
+        "role": "secondary",
+        "displayName": "Count New Dark",
+        "canonical": "#a8c7fa",
+        "tonalRamp": [
+          "#030b1b",
+          "#16253e",
+          "#2e4263",
+          "#48628b",
+          "#6983af",
+          "#8fa6cd",
+          "#b6caeb",
+          "#e0f0ff"
+        ]
+      },
+      "count-learn-dark": {
+        "role": "secondary",
+        "displayName": "Count Learn Dark",
+        "canonical": "#f2b8b5",
+        "tonalRamp": [
+          "#170505",
+          "#371c1b",
+          "#5b3635",
+          "#815351",
+          "#a57471",
+          "#c49896",
+          "#e4bfbd",
+          "#ffe6e4"
+        ]
+      },
+      "count-due-dark": {
+        "role": "secondary",
+        "displayName": "Count Due Dark",
+        "canonical": "#8bd8a0",
+        "tonalRamp": [
+          "#001102",
+          "#002e13",
+          "#144f2a",
+          "#2b7143",
+          "#4f9463",
+          "#7bb58b",
+          "#a8d7b3",
+          "#d5fadd"
+        ]
+      },
+      "mature-dark": {
+        "role": "secondary",
+        "displayName": "Mature Dark",
+        "canonical": "#3f9c5f",
+        "tonalRamp": [
+          "#001201",
+          "#002f0f",
+          "#005026",
+          "#19743e",
+          "#42965e",
+          "#73b786",
+          "#a2d9af",
+          "#d0fbda"
+        ]
+      },
+      "answer-hard-dark": {
+        "role": "secondary",
+        "displayName": "Answer Hard Dark",
+        "canonical": "#f0c36d",
+        "tonalRamp": [
+          "#170700",
+          "#362000",
+          "#5a3c00",
+          "#7f5a00",
+          "#a27b29",
+          "#c1a060",
+          "#e1c592",
+          "#ffecc4"
+        ]
+      },
+      "stat-relearn": {
+        "role": "secondary",
+        "displayName": "Relearning Series",
+        "canonical": "color-mix(in oklab, var(--count-learn) 50%, var(--surface))",
+        "tonalRamp": [
+          "#1c0202",
+          "#41120d",
+          "#672a23",
+          "#894940",
+          "#ac685f",
+          "#cc8b81",
+          "#e7b7af",
+          "#fbeae7"
+        ],
+        "note": "The frontmatter hex is this formula resolved for the Hayaki Theme; the formula is normative."
+      },
+      "stat-filtered": {
+        "role": "secondary",
+        "displayName": "Filtered Reviews Series",
+        "canonical": "color-mix(in oklab, var(--ink) 26%, var(--surface))",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#232425",
+          "#3f4041",
+          "#5d5e5e",
+          "#7c7d7e",
+          "#9d9e9f",
+          "#c3c4c5",
+          "#eeeeef"
+        ],
+        "note": "The frontmatter hex is this formula resolved for the Hayaki Theme; the formula is normative."
+      },
+      "stat-relearn-dark": {
+        "role": "secondary",
+        "displayName": "Relearning Series (Dark and Black)",
+        "canonical": "#cf7a74",
+        "tonalRamp": [
+          "#1f0001",
+          "#46090b",
+          "#6d2221",
+          "#90423e",
+          "#b4625d",
+          "#d58680",
+          "#eeb3ae",
+          "#fde9e7"
+        ]
+      },
+      "stat-filtered-dark": {
+        "role": "secondary",
+        "displayName": "Filtered Reviews Series (Dark and Black)",
+        "canonical": "#7d8285",
+        "tonalRamp": [
+          "#090b0d",
+          "#212527",
+          "#3c4043",
+          "#5a5e61",
+          "#797e81",
+          "#9a9fa2",
+          "#c1c5c7",
+          "#edefef"
+        ]
+      },
+      "danger": {
+        "role": "error",
+        "displayName": "Danger",
+        "canonical": "#b3261e",
+        "tonalRamp": [
+          "#260000",
+          "#4f0000",
+          "#7c130e",
+          "#ab2c23",
+          "#d35245",
+          "#f08072",
+          "#ffad9f",
+          "#ffd9cd"
+        ]
+      },
+      "on-danger": {
+        "role": "neutral",
+        "displayName": "On Danger",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "danger-dark": {
+        "role": "error",
+        "displayName": "Danger (Dark)",
+        "canonical": "#f2b8b5",
+        "tonalRamp": [
+          "#170505",
+          "#371c1b",
+          "#5b3635",
+          "#815351",
+          "#a57471",
+          "#c49896",
+          "#e4bfbd",
+          "#ffe6e4"
+        ]
+      },
+      "on-danger-dark": {
+        "role": "neutral",
+        "displayName": "On Danger (Dark)",
+        "canonical": "#3b0f0c",
+        "tonalRamp": [
+          "#190403",
+          "#3c1713",
+          "#60302b",
+          "#814e48",
+          "#a36d66",
+          "#c48f88",
+          "#e0bab4",
+          "#f8ebe9"
+        ]
+      },
+      "marked": {
+        "role": "secondary",
+        "displayName": "Marked Indigo",
+        "canonical": "#5b52cf",
+        "tonalRamp": [
+          "#0a0035",
+          "#20006c",
+          "#37209d",
+          "#5145c2",
+          "#6e68e7",
+          "#8e8eff",
+          "#b6bbff",
+          "#e9ecff"
+        ]
+      },
+      "suspended": {
+        "role": "secondary",
+        "displayName": "Suspended Yellow",
+        "canonical": "#a67c00",
+        "tonalRamp": [
+          "#180600",
+          "#3b1c00",
+          "#5d3600",
+          "#7e5500",
+          "#9f7600",
+          "#c0983f",
+          "#ddc087",
+          "#f7eedb"
+        ]
+      },
+      "buried": {
+        "role": "secondary",
+        "displayName": "Buried Grey",
+        "canonical": "#6f777d",
+        "tonalRamp": [
+          "#080c0e",
+          "#1f2529",
+          "#3a4146",
+          "#575f65",
+          "#767e85",
+          "#98a0a5",
+          "#bfc5c9",
+          "#edeff0"
+        ]
+      },
+      "marked-dark": {
+        "role": "secondary",
+        "displayName": "Marked Indigo (Dark)",
+        "canonical": "#b3a8f7",
+        "tonalRamp": [
+          "#0c0423",
+          "#25174e",
+          "#413276",
+          "#5e5198",
+          "#7d71bb",
+          "#9d93db",
+          "#c3bdf1",
+          "#eeecfe"
+        ]
+      },
+      "suspended-dark": {
+        "role": "secondary",
+        "displayName": "Suspended Yellow (Dark)",
+        "canonical": "#f0d26a",
+        "tonalRamp": [
+          "#150800",
+          "#361f00",
+          "#573b00",
+          "#765a00",
+          "#977a00",
+          "#b79c3c",
+          "#d6c485",
+          "#f4efdb"
+        ]
+      },
+      "buried-dark": {
+        "role": "secondary",
+        "displayName": "Buried Grey (Dark)",
+        "canonical": "#959ca1",
+        "tonalRamp": [
+          "#090c0d",
+          "#202528",
+          "#3b4145",
+          "#585f63",
+          "#787e83",
+          "#999fa4",
+          "#c0c5c8",
+          "#edeff0"
+        ]
+      },
+      "flag-red": {
+        "role": "secondary",
+        "displayName": "Flag Red",
+        "canonical": "#d64545",
+        "tonalRamp": [
+          "#260000",
+          "#4f0004",
+          "#7c0f17",
+          "#ad282c",
+          "#d44f4d",
+          "#f17e78",
+          "#ffaba4",
+          "#ffd8d1"
+        ],
+        "note": "CSS token --flag-1."
+      },
+      "flag-orange": {
+        "role": "secondary",
+        "displayName": "Flag Orange",
+        "canonical": "#d9822b",
+        "tonalRamp": [
+          "#1e0100",
+          "#431500",
+          "#6b2f00",
+          "#954a00",
+          "#bb6c19",
+          "#d89458",
+          "#f6bc8c",
+          "#ffe4bf"
+        ],
+        "note": "CSS token --flag-2."
+      },
+      "flag-green": {
+        "role": "secondary",
+        "displayName": "Flag Green",
+        "canonical": "#3d9a3d",
+        "tonalRamp": [
+          "#001200",
+          "#003000",
+          "#035108",
+          "#1c751f",
+          "#449843",
+          "#74b971",
+          "#a2da9f",
+          "#d0fdce"
+        ],
+        "note": "CSS token --flag-3."
+      },
+      "flag-blue": {
+        "role": "secondary",
+        "displayName": "Flag Blue",
+        "canonical": "#3b6fd8",
+        "tonalRamp": [
+          "#00052d",
+          "#051f59",
+          "#173c88",
+          "#2c5bba",
+          "#4c7ee0",
+          "#77a4f9",
+          "#a3c9ff",
+          "#d1efff"
+        ],
+        "note": "CSS token --flag-4."
+      },
+      "flag-pink": {
+        "role": "secondary",
+        "displayName": "Flag Pink",
+        "canonical": "#d65bbf",
+        "tonalRamp": [
+          "#1f001a",
+          "#45003b",
+          "#6e1260",
+          "#9a2b88",
+          "#c050ab",
+          "#de7ec9",
+          "#fbaae8",
+          "#ffd7ff"
+        ],
+        "note": "CSS token --flag-5."
+      },
+      "flag-turquoise": {
+        "role": "secondary",
+        "displayName": "Flag Turquoise",
+        "canonical": "#12a39a",
+        "tonalRamp": [
+          "#00110f",
+          "#002f2b",
+          "#00504a",
+          "#00736c",
+          "#16968d",
+          "#5fb7af",
+          "#94d8d1",
+          "#c6fbf5"
+        ],
+        "note": "CSS token --flag-6."
+      },
+      "flag-purple": {
+        "role": "secondary",
+        "displayName": "Flag Purple",
+        "canonical": "#8a55d6",
+        "tonalRamp": [
+          "#13002c",
+          "#2f0c56",
+          "#4f2684",
+          "#7240b5",
+          "#9364db",
+          "#b38ef4",
+          "#d4b7ff",
+          "#f7e1ff"
+        ],
+        "note": "CSS token --flag-7."
+      },
+      "flag-red-dark": {
+        "role": "secondary",
+        "displayName": "Flag Red Dark",
+        "canonical": "#f07a7a",
+        "tonalRamp": [
+          "#240000",
+          "#500005",
+          "#7b041a",
+          "#9f3137",
+          "#c55356",
+          "#e67a79",
+          "#fcaca9",
+          "#ffe7e6"
+        ],
+        "note": "CSS token --flag-1 in Dark and Black."
+      },
+      "flag-orange-dark": {
+        "role": "secondary",
+        "displayName": "Flag Orange Dark",
+        "canonical": "#f2a65e",
+        "tonalRamp": [
+          "#1e0200",
+          "#451000",
+          "#6b2a00",
+          "#8e4900",
+          "#b16a19",
+          "#d18d4c",
+          "#ebb98d",
+          "#fcebdd"
+        ],
+        "note": "CSS token --flag-2 in Dark and Black."
+      },
+      "flag-green-dark": {
+        "role": "secondary",
+        "displayName": "Flag Green Dark",
+        "canonical": "#6cc46c",
+        "tonalRamp": [
+          "#001200",
+          "#003100",
+          "#005100",
+          "#0e7219",
+          "#3a933d",
+          "#64b464",
+          "#9ed59c",
+          "#e3f4e2"
+        ],
+        "note": "CSS token --flag-3 in Dark and Black."
+      },
+      "flag-blue-dark": {
+        "role": "secondary",
+        "displayName": "Flag Blue Dark",
+        "canonical": "#7aa2f0",
+        "tonalRamp": [
+          "#000727",
+          "#061e55",
+          "#1a3b7f",
+          "#375aa2",
+          "#567bc6",
+          "#799ee5",
+          "#a9c5f9",
+          "#e5efff"
+        ],
+        "note": "CSS token --flag-4 in Dark and Black."
+      },
+      "flag-pink-dark": {
+        "role": "secondary",
+        "displayName": "Flag Pink Dark",
+        "canonical": "#ec8fd8",
+        "tonalRamp": [
+          "#1d0018",
+          "#44003a",
+          "#6a145d",
+          "#8c377d",
+          "#b0589e",
+          "#d17dbf",
+          "#ebaddc",
+          "#fce7f7"
+        ],
+        "note": "CSS token --flag-5 in Dark and Black."
+      },
+      "flag-turquoise-dark": {
+        "role": "secondary",
+        "displayName": "Flag Turquoise Dark",
+        "canonical": "#4fd0c6",
+        "tonalRamp": [
+          "#001210",
+          "#00312d",
+          "#00514b",
+          "#007169",
+          "#00928a",
+          "#3db3aa",
+          "#8bd4cd",
+          "#def4f1"
+        ],
+        "note": "CSS token --flag-6 in Dark and Black."
+      },
+      "flag-purple-dark": {
+        "role": "secondary",
+        "displayName": "Flag Purple Dark",
+        "canonical": "#b48cf0",
+        "tonalRamp": [
+          "#120027",
+          "#300854",
+          "#4f237f",
+          "#6d44a1",
+          "#8d65c5",
+          "#ad89e5",
+          "#cfb6f8",
+          "#f2eaff"
+        ],
+        "note": "CSS token --flag-7 in Dark and Black."
+      },
+      "theme-hayaki": {
+        "role": "primary",
+        "displayName": "Theme Hayaki",
+        "canonical": "#2c776e",
+        "tonalRamp": [
+          "#00100d",
+          "#002c28",
+          "#134c46",
+          "#2a6e66",
+          "#4e9087",
+          "#7bb1a9",
+          "#a7d4cd",
+          "#d4f7f1"
+        ]
+      },
+      "theme-hayaki-dark": {
+        "role": "primary",
+        "displayName": "Theme Hayaki Dark",
+        "canonical": "#7ed6ca",
+        "tonalRamp": [
+          "#00100d",
+          "#002d28",
+          "#004d46",
+          "#167067",
+          "#419288",
+          "#72b3aa",
+          "#a1d5cd",
+          "#d0f8f2"
+        ]
+      },
+      "theme-sakura": {
+        "role": "primary",
+        "displayName": "Theme Sakura",
+        "canonical": "#b04663",
+        "tonalRamp": [
+          "#200007",
+          "#460a1e",
+          "#6f2239",
+          "#9b3b56",
+          "#c15d76",
+          "#df879a",
+          "#fcb1c0",
+          "#ffdce7"
+        ]
+      },
+      "theme-sakura-dark": {
+        "role": "primary",
+        "displayName": "Theme Sakura Dark",
+        "canonical": "#ff9db7",
+        "tonalRamp": [
+          "#1d0009",
+          "#411121",
+          "#69293d",
+          "#93435b",
+          "#b9647c",
+          "#d78c9f",
+          "#f5b5c4",
+          "#ffdfeb"
+        ]
+      },
+      "theme-matcha": {
+        "role": "primary",
+        "displayName": "Theme Matcha",
+        "canonical": "#50743f",
+        "tonalRamp": [
+          "#030f00",
+          "#172b0d",
+          "#304a24",
+          "#4b6c3c",
+          "#6b8e5c",
+          "#91b084",
+          "#b9d2ae",
+          "#e2f6d9"
+        ]
+      },
+      "theme-matcha-dark": {
+        "role": "primary",
+        "displayName": "Theme Matcha Dark",
+        "canonical": "#a8cf8e",
+        "tonalRamp": [
+          "#040f00",
+          "#182b08",
+          "#314a1e",
+          "#4c6c35",
+          "#6c8e55",
+          "#92b07f",
+          "#b9d2aa",
+          "#e2f6d6"
+        ]
+      },
+      "theme-ocean": {
+        "role": "primary",
+        "displayName": "Theme Ocean",
+        "canonical": "#0a6e9e",
+        "tonalRamp": [
+          "#000d1f",
+          "#002943",
+          "#00476a",
+          "#136894",
+          "#3e8bb8",
+          "#6fadd5",
+          "#9ed0f2",
+          "#cef5ff"
+        ]
+      },
+      "theme-ocean-dark": {
+        "role": "primary",
+        "displayName": "Theme Ocean Dark",
+        "canonical": "#5ec4f0",
+        "tonalRamp": [
+          "#000e1d",
+          "#002a41",
+          "#004a67",
+          "#006b90",
+          "#2b8eb4",
+          "#66b0d1",
+          "#98d3ef",
+          "#c9f7ff"
+        ]
+      },
+      "theme-indigo": {
+        "role": "primary",
+        "displayName": "Theme Indigo",
+        "canonical": "#3a5bd9",
+        "tonalRamp": [
+          "#020133",
+          "#0d1a60",
+          "#203692",
+          "#3554c7",
+          "#5378ee",
+          "#7b9fff",
+          "#a6c6ff",
+          "#d2edff"
+        ]
+      },
+      "theme-indigo-dark": {
+        "role": "primary",
+        "displayName": "Theme Indigo Dark",
+        "canonical": "#8fa8ff",
+        "tonalRamp": [
+          "#040725",
+          "#17204c",
+          "#2f3d77",
+          "#485ba5",
+          "#687dca",
+          "#8da2e5",
+          "#b5c7ff",
+          "#deedff"
+        ]
+      },
+      "theme-wisteria": {
+        "role": "primary",
+        "displayName": "Theme Wisteria",
+        "canonical": "#745ab9",
+        "tonalRamp": [
+          "#0e0225",
+          "#29184c",
+          "#463277",
+          "#664fa5",
+          "#8770ca",
+          "#a897e5",
+          "#cbbeff",
+          "#f0e6ff"
+        ]
+      },
+      "theme-wisteria-dark": {
+        "role": "primary",
+        "displayName": "Theme Wisteria Dark",
+        "canonical": "#b9a3f5",
+        "tonalRamp": [
+          "#0e0520",
+          "#291b45",
+          "#47366d",
+          "#675398",
+          "#8874bc",
+          "#aa99d8",
+          "#cdc0f5",
+          "#f1e7ff"
+        ]
+      },
+      "theme-amber": {
+        "role": "primary",
+        "displayName": "Theme Amber",
+        "canonical": "#916019",
+        "tonalRamp": [
+          "#180600",
+          "#391e00",
+          "#5d3901",
+          "#835716",
+          "#a7783c",
+          "#c69d6c",
+          "#e5c39a",
+          "#ffeaca"
+        ]
+      },
+      "theme-amber-dark": {
+        "role": "primary",
+        "displayName": "Theme Amber Dark",
+        "canonical": "#f5c451",
+        "tonalRamp": [
+          "#180600",
+          "#381f00",
+          "#5c3b00",
+          "#825900",
+          "#a57b00",
+          "#c4a04d",
+          "#e4c584",
+          "#ffecba"
+        ]
+      },
+      "theme-sumi": {
+        "role": "primary",
+        "displayName": "Theme Sumi",
+        "canonical": "#4a4a4f",
+        "tonalRamp": [
+          "#0b0b0d",
+          "#252528",
+          "#414145",
+          "#616165",
+          "#828287",
+          "#a4a4a9",
+          "#c9c9cc",
+          "#eeeef1"
+        ]
+      },
+      "theme-sumi-dark": {
+        "role": "primary",
+        "displayName": "Theme Sumi Dark",
+        "canonical": "#c7c7cc",
+        "tonalRamp": [
+          "#0b0b0d",
+          "#252527",
+          "#424245",
+          "#616165",
+          "#828286",
+          "#a4a4a8",
+          "#c9c9cc",
+          "#eeeef1"
+        ]
+      },
+      "theme-paper": {
+        "role": "primary",
+        "displayName": "Theme Paper",
+        "canonical": "#8a5a2b",
+        "tonalRamp": [
+          "#170600",
+          "#381e03",
+          "#5c3916",
+          "#82562c",
+          "#a6774d",
+          "#c59c78",
+          "#e4c2a4",
+          "#ffe9d1"
+        ]
+      },
+      "theme-paper-dark": {
+        "role": "primary",
+        "displayName": "Theme Paper Dark",
+        "canonical": "#d9a86c",
+        "tonalRamp": [
+          "#170700",
+          "#371f00",
+          "#5b3a0a",
+          "#81581f",
+          "#a47943",
+          "#c39d70",
+          "#e3c39e",
+          "#ffeacd"
+        ]
+      },
+      "theme-paper-canvas": {
+        "role": "primary",
+        "displayName": "Theme Paper Canvas",
+        "canonical": "#f6f1e7",
+        "tonalRamp": [
+          "#0d0b08",
+          "#272520",
+          "#45423b",
+          "#656159",
+          "#86827a",
+          "#a8a59d",
+          "#ccc9c3",
+          "#f1eee9"
+        ]
+      },
+      "theme-paper-canvas-dark": {
+        "role": "primary",
+        "displayName": "Theme Paper Canvas Dark",
+        "canonical": "#1e1a15",
+        "tonalRamp": [
+          "#0d0b09",
+          "#272521",
+          "#45413d",
+          "#65605b",
+          "#86817c",
+          "#a8a49f",
+          "#ccc8c4",
+          "#f1eeea"
+        ]
+      },
+      "theme-midnight": {
+        "role": "primary",
+        "displayName": "Theme Midnight",
+        "canonical": "#1a757f",
+        "tonalRamp": [
+          "#000f13",
+          "#002c31",
+          "#034b53",
+          "#1c6d76",
+          "#448f99",
+          "#74b1b9",
+          "#a2d3da",
+          "#d1f7fc"
+        ]
+      },
+      "theme-midnight-dark": {
+        "role": "primary",
+        "displayName": "Theme Midnight Dark",
+        "canonical": "#5ee6ee",
+        "tonalRamp": [
+          "#001115",
+          "#002f34",
+          "#004f56",
+          "#00727a",
+          "#00959d",
+          "#54b6bc",
+          "#8dd8dd",
+          "#c2fbfe"
+        ]
+      },
+      "theme-midnight-canvas": {
+        "role": "primary",
+        "displayName": "Theme Midnight Canvas",
+        "canonical": "#eef3fa",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232528",
+          "#3f4247",
+          "#5e6267",
+          "#7f8388",
+          "#a2a5aa",
+          "#c6c9ce",
+          "#eceff2"
+        ]
+      },
+      "theme-midnight-canvas-dark": {
+        "role": "primary",
+        "displayName": "Theme Midnight Canvas Dark",
+        "canonical": "#0b1426",
+        "tonalRamp": [
+          "#070b13",
+          "#1f2531",
+          "#394253",
+          "#566176",
+          "#778399",
+          "#9ba5b9",
+          "#c1c9da",
+          "#e8effc"
+        ]
+      }
+    },
+    "derivedRoles": [
+      {
+        "name": "accent-soft",
+        "value": "color-mix(in oklab, var(--accent) 13%, transparent)",
+        "dark": "color-mix(in oklab, var(--accent) 24%, transparent)",
+        "purpose": "Active nav item, highlighted menu and palette items, pressed tools, the field focus halo."
+      },
+      {
+        "name": "accent-softer",
+        "value": "color-mix(in oklab, var(--accent) 7%, transparent)",
+        "dark": "color-mix(in oklab, var(--accent) 9%, transparent)",
+        "purpose": "Keyboard-focused Deck rows, drop targets, the code editor active line, masks being drawn."
+      },
+      {
+        "name": "selection",
+        "value": "color-mix(in oklab, var(--accent) 22%, transparent)",
+        "dark": "color-mix(in oklab, var(--accent) 32%, transparent)",
+        "purpose": "Text selection, also in CodeMirror."
+      },
+      {
+        "name": "sidebar-hover",
+        "value": "color-mix(in oklab, var(--ink) 6%, transparent)",
+        "dark": "color-mix(in oklab, white 5%, transparent)",
+        "purpose": "Hover on sidebar rows, ghost buttons and tool-rail buttons."
+      },
+      {
+        "name": "line-soft",
+        "value": "color-mix(in oklab, var(--line) 60%, transparent)",
+        "purpose": "Row dividers in the Deck table, the profile list and the shortcuts sheet."
+      },
+      {
+        "name": "sidebar-pane",
+        "value": "color-mix(in oklab, var(--sidebar) 60%, var(--bg))",
+        "purpose": "Browse's filter column."
+      },
+      {
+        "name": "window",
+        "value": "var(--bg)",
+        "material": "transparent",
+        "purpose": "html and body ground; transparent only under a confirmed OS backdrop, never in Black."
+      },
+      {
+        "name": "sidebar-surface",
+        "value": "var(--sidebar)",
+        "material": "color-mix(in oklab, var(--accent) 7%, rgb(242 244 245 / 0.55))",
+        "materialDark": "color-mix(in oklab, var(--accent) 7%, rgb(28 30 32 / 0.45))",
+        "purpose": "The sidebar ground; translucent over Mica or vibrancy."
+      },
+      {
+        "name": "tint-pill",
+        "value": "11%",
+        "dark": "14%",
+        "purpose": "Count pill fill, and the active queue in the study strip."
+      },
+      {
+        "name": "tint-row",
+        "value": "13%",
+        "dark": "16%",
+        "purpose": "Marked, suspended, buried and flag row tints in Browse."
+      },
+      {
+        "name": "tint-halo",
+        "value": "18%",
+        "purpose": "Danger focus halo."
+      },
+      {
+        "name": "measure",
+        "value": "color-mix(in oklab, var(--accent) 78%, var(--surface))",
+        "purpose": "Statistics measures that are not Card states (ease, difficulty, hours)."
+      },
+      {
+        "name": "heat",
+        "value": "color-mix(in oklab, var(--accent) 22-100%, var(--surface-3))",
+        "purpose": "Review calendar, stepped in 6% increments; empty days surface-3."
+      },
+      {
+        "name": "scrim",
+        "value": "rgb(0 0 0 / 0.28)",
+        "dark": "rgb(0 0 0 / 0.5)",
+        "purpose": "Behind dialogs, the command palette and the shortcuts sheet."
+      }
+    ],
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The Deck Overview title only. Segoe UI Variable Display."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Decks summary sentence, Finished screen, profile chooser. Segoe UI Variable Display."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Empty states, the error screen, section heads in Add."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Toolbar title, dialog and sheet titles, the palette input, Show Answer."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Settings row labels, descriptions (62ch max), palette items, answer labels at 600, large buttons."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Buttons, nav items, menu items, fields, Segmented options, counts."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Hints, legends, tooltips, menu shortcuts, intervals, sidebar group labels and dialog section labels (600 ink-2). Segoe UI Variable Small."
+      },
+      "micro": {
+        "displayName": "Micro",
+        "purpose": "Kbd keys, the answer key row, the avatar initial. Segoe UI Variable Small."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "CodeMirror in the Card Template editor and other code-like values."
+      }
+    },
+    "typeScale": {
+      "micro": "11px / 1.35",
+      "caption": "12px / 1.45",
+      "control": "13px / 1.45",
+      "body": "14px / 1.5",
+      "title": "15px / 1.4",
+      "heading": "18px / 1.35",
+      "headline": "22px / 1.3",
+      "display": "28px / 1.2",
+      "root": "14px / 1.45"
+    },
+    "fontStacks": {
+      "latin-text": "\"Segoe UI Variable Text\", \"Segoe UI\", -apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\"",
+      "latin-small": "\"Segoe UI Variable Small\", \"Segoe UI\", -apple-system, BlinkMacSystemFont, \"SF Pro Text\", \"Helvetica Neue\"",
+      "latin-display": "\"Segoe UI Variable Display\", \"Segoe UI\", -apple-system, BlinkMacSystemFont, \"SF Pro Display\", \"Helvetica Neue\"",
+      "ui": "var(--font-latin), var(--font-cjk), system-ui, sans-serif (Small for micro and caption, Display for headline and display)",
+      "cjk-default": "\"Microsoft YaHei UI\", \"PingFang SC\", \"Yu Gothic UI\", \"Hiragino Sans\", \"Noto Sans CJK SC\", \"Source Han Sans SC\"",
+      "cjk-zh": "\"Microsoft YaHei UI\", \"PingFang SC\", \"Noto Sans CJK SC\", \"Source Han Sans SC\"",
+      "cjk-zh-hant": "\"Microsoft JhengHei UI\", \"PingFang TC\", \"Noto Sans CJK TC\", \"Source Han Sans TC\" (zh-TW, zh-HK, zh-Hant)",
+      "cjk-ja": "\"Yu Gothic UI\", \"Hiragino Sans\", \"Noto Sans CJK JP\", \"Source Han Sans JP\"",
+      "cjk-ko": "\"Malgun Gothic\", \"Apple SD Gothic Neo\", \"Noto Sans CJK KR\", \"Source Han Sans KR\"",
+      "code": "\"Cascadia Mono\", \"SF Mono\", ui-monospace, Consolas, monospace",
+      "semibold-zh-windows": ":root[data-platform=\"windows\"]:lang(zh) sets --font-weight-semibold: 660 (YaHei UI and JhengHei UI have no semibold)"
+    },
+    "shadows": [
+      {
+        "name": "pop",
+        "value": "0 8px 28px rgb(16 24 32 / 0.14), 0 1px 3px rgb(16 24 32 / 0.08)",
+        "dark": "0 10px 32px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4)",
+        "purpose": "The one elevation: menus, popovers, tooltips, dialogs, command palette, shortcuts sheet, editor tooltips, toasts."
+      },
+      {
+        "name": "thumb",
+        "value": "0 1px 2px rgb(16 24 32 / 0.12)",
+        "dark": "0 1px 2px rgb(0 0 0 / 0.4)",
+        "purpose": "Selected Segmented option; the Image Occlusion colour dot."
+      },
+      {
+        "name": "knob",
+        "value": "0 1px 2px rgb(16 24 32 / 0.25)",
+        "dark": "0 1px 2px rgb(0 0 0 / 0.45)",
+        "purpose": "Switch knob."
+      },
+      {
+        "name": "ring",
+        "value": "0 0 0 3px var(--accent-soft)",
+        "purpose": "Field focus halo, with an accent border."
+      },
+      {
+        "name": "ring-danger",
+        "value": "0 0 0 3px color-mix(in oklab, var(--danger) var(--tint-halo), transparent)",
+        "purpose": "Invalid field focus halo, with a danger border."
+      },
+      {
+        "name": "ring-inset",
+        "value": "inset 0 0 0 2px var(--accent)",
+        "purpose": "Focus inside rows and list items, where an outline would be clipped."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px",
+        "purpose": "Global :focus-visible ring (in @layer base)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "dur-fast",
+        "value": "90ms",
+        "purpose": "Hover, press (scale 0.98), field focus, separator highlight."
+      },
+      {
+        "name": "dur-quick",
+        "value": "140ms",
+        "purpose": "Fades, menu and tooltip pop-in, route settle, answer-button rise, expand opacity."
+      },
+      {
+        "name": "dur",
+        "value": "200ms",
+        "purpose": "Focus transition and sidebar collapse, progress line, chevron rotation, Switch, dialog-in, expand height."
+      },
+      {
+        "name": "dur-slow",
+        "value": "320ms",
+        "purpose": "Screen entrances (rise-in) and queue and Statistics bars."
+      },
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Entrances, layout moves, progress, knob, chevrons."
+      },
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Hover and press state changes."
+      },
+      {
+        "name": "fade-in",
+        "value": "var(--dur-quick) var(--ease-out); from opacity 0",
+        "purpose": "Scrims."
+      },
+      {
+        "name": "pop-in",
+        "value": "var(--dur-quick) var(--ease-out); from opacity 0, scale(0.97) translateY(-2px)",
+        "purpose": "Menus, sub-menus, tooltips."
+      },
+      {
+        "name": "dialog-in",
+        "value": "var(--dur) var(--ease-out); from opacity 0, scale(0.96)",
+        "purpose": "Dialogs, command palette, shortcuts sheet."
+      },
+      {
+        "name": "rise-in",
+        "value": "var(--dur-slow) var(--ease-out) both; from opacity 0, translateY(6px)",
+        "purpose": "Screen entrances: profile chooser, empty Decks, Finished."
+      },
+      {
+        "name": "rise-quick",
+        "value": "var(--dur-quick) var(--ease-out) both, 18ms stagger",
+        "purpose": "The four answer buttons after reveal."
+      },
+      {
+        "name": "route-settle",
+        "value": "Motion: opacity 0 to 1, y 4px to 0 over dur-quick on ease-out",
+        "purpose": "Between screens; none into or within Study."
+      },
+      {
+        "name": "answer-press",
+        "value": "Motion spring: stiffness 700, damping 30, mass 0.6; scale 0.96",
+        "purpose": "Answer buttons; the answer is sent on click, never delayed."
+      },
+      {
+        "name": "answer-latency",
+        "value": "under 120ms",
+        "purpose": "Answer to next Card, with the next Card pre-rendered."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "all transition and animation durations 0ms; MotionConfig reducedMotion=\"user\"",
+        "purpose": "prefers-reduced-motion: reduce."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "window-min",
+        "value": "880px x 600px"
+      },
+      {
+        "name": "window-default",
+        "value": "1280px x 820px"
+      },
+      {
+        "name": "sidebar-width",
+        "value": "200px to 380px, default 248px, collapsible"
+      },
+      {
+        "name": "deck-options-rail",
+        "value": "960px (container)"
+      },
+      {
+        "name": "stats-two-column",
+        "value": "1000px (container)"
+      },
+      {
+        "name": "shortcuts-two-column",
+        "value": "640px (sm)"
+      }
+    ],
+    "windowMaterial": {
+      "detection": "useWindowMaterial() sets data-platform and data-material on <html>; on Windows it reads navigator.userAgentData platformVersion and uses Mica when the major version is 13 or more (Windows 11).",
+      "windows11": "mica",
+      "macos": "vibrancy (MAC_VIBRANCY_ENABLED, app.macOSPrivateApi and the macos-private-api Cargo feature); not yet verified on a Mac",
+      "windows10": "opaque",
+      "linux": "opaque",
+      "black": "opaque on every platform",
+      "workArea": "always opaque bg",
+      "caption": "native OS caption kept, to preserve Windows Snap Layouts",
+      "tauri": "transparent: true; windowEffects effects [mica, sidebar], state followsWindowActiveState"
+    },
+    "appearances": {
+      "light": ":root",
+      "dark": ":root.dark",
+      "black": ":root[data-appearance=\"black\"] on top of .dark",
+      "themes": ":root[data-theme=\"<id>\"] sets --accent-light and --accent-dark; paper and midnight also set --canvas-light and --canvas-dark"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled accent action per screen (Study, Show Answer, Save, Add).",
+      "html": "<button class=\"ds-btn ds-btn-primary\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg>Study “日本語”</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 14px;border-radius:8px;font:500 13px/1.45 var(--font-ui,'Segoe UI',system-ui,sans-serif);border:1px solid transparent;transition:background-color 90ms cubic-bezier(0.2,0,0,1),transform 90ms cubic-bezier(0.2,0,0,1)}.ds-btn:active{transform:scale(0.98)}.ds-btn:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}.ds-btn-primary{background:var(--accent,#2c776e);color:var(--on-accent,#fff)}.ds-btn-primary:hover{background:color-mix(in oklab,var(--accent,#2c776e) 90%,var(--ink,#1b1e20))}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The default button: toolbar Import and Add, Create Deck, dialog Cancel.",
+      "html": "<button class=\"ds-btn2\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M12 5v14M5 12h14\"/></svg>Add</button>",
+      "css": ".ds-btn2{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:8px;font:500 13px/1.45 var(--font-ui,'Segoe UI',system-ui,sans-serif);background:var(--surface,#fff);color:var(--ink,#1b1e20);border:1px solid var(--line,#e4e7ea);transition:background-color 90ms cubic-bezier(0.2,0,0,1),border-color 90ms,transform 90ms}.ds-btn2:hover{background:var(--surface-2,#f6f7f8);border-color:var(--line-strong,#d3d8dc)}.ds-btn2:active{transform:scale(0.98)}.ds-btn2:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Icon Button",
+      "kind": "button",
+      "refersTo": "icon-button",
+      "description": "Square ghost button for strip and row actions, always with a tooltip naming its shortcut.",
+      "html": "<button class=\"ds-icon\" aria-label=\"Undo (Ctrl+Z)\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h10.5a5.5 5.5 0 0 1 0 11H11\"/></svg></button>",
+      "css": ".ds-icon{display:inline-grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--ink-2,#555c62);transition:background-color 90ms,color 90ms,transform 90ms}.ds-icon:hover{background:color-mix(in oklab,var(--ink,#1b1e20) 6%,transparent);color:var(--ink,#1b1e20)}.ds-icon:active{transform:scale(0.98)}.ds-icon:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "32px field with a Kbd hint; focus turns the border accent with a 3px soft halo.",
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><input class=\"ds-input\" placeholder=\"Search\"><kbd class=\"ds-kbd\">/</kbd></label>",
+      "css": ".ds-search{position:relative;display:block;width:260px;color:var(--ink-3,#6f777d)}.ds-search svg{position:absolute;left:10px;top:8px}.ds-input{box-sizing:border-box;width:100%;height:32px;padding:0 32px;border:1px solid var(--line,#e4e7ea);border-radius:8px;background:var(--surface-2,#f6f7f8);color:var(--ink,#1b1e20);font:400 13px/1.45 var(--font-ui,'Segoe UI',system-ui,sans-serif);outline:none;transition:border-color 90ms,box-shadow 90ms}.ds-input::placeholder{color:var(--ink-3,#6f777d)}.ds-input:hover{border-color:var(--line-strong,#d3d8dc)}.ds-input:focus{border-color:var(--accent,#2c776e);box-shadow:0 0 0 3px color-mix(in oklab,var(--accent,#2c776e) 13%,transparent)}.ds-kbd{position:absolute;right:8px;top:7px;display:inline-flex;align-items:center;justify-content:center;height:18px;min-width:18px;padding:0 4px;box-sizing:border-box;border:1px solid var(--line,#e4e7ea);border-radius:5px;background:var(--surface-2,#f6f7f8);color:var(--ink-3,#6f777d);font:500 11px var(--font-ui,'Segoe UI',system-ui,sans-serif)}"
+    },
+    {
+      "name": "Number Field",
+      "kind": "input",
+      "refersTo": "number-field",
+      "description": "The one number control: right-aligned tabular figures and two 24px chevron steppers; no native spinners.",
+      "html": "<div class=\"ds-num\"><input class=\"ds-num-in\" value=\"20\" aria-label=\"New cards/day\" role=\"spinbutton\"><div class=\"ds-steps\"><button class=\"ds-step\" aria-label=\"Decrease\"><svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m6 9 6 6 6-6\"/></svg></button><button class=\"ds-step\" aria-label=\"Increase\"><svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m18 15-6-6-6 6\"/></svg></button></div></div>",
+      "css": ".ds-num{position:relative;width:124px}.ds-num-in{box-sizing:border-box;width:100%;height:32px;padding:0 58px 0 10px;border:1px solid var(--line,#e4e7ea);border-radius:8px;background:var(--surface,#fff);color:var(--ink,#1b1e20);font:400 13px/1.45 var(--font-ui,'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif);font-variant-numeric:tabular-nums;text-align:right;outline:none;transition:border-color 90ms,box-shadow 90ms}.ds-num-in:hover{border-color:var(--line-strong,#d3d8dc)}.ds-num-in:focus{border-color:var(--accent,#2c776e);box-shadow:0 0 0 3px color-mix(in oklab,var(--accent,#2c776e) 13%,transparent)}.ds-steps{position:absolute;top:0;bottom:0;right:4px;display:flex;align-items:center;gap:1px}.ds-step{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--ink-3,#6f777d);transition:background-color 90ms,color 90ms}.ds-step:hover{background:var(--surface-3,#eef0f2);color:var(--ink,#1b1e20)}.ds-step:active{background:var(--line,#e4e7ea)}"
+    },
+    {
+      "name": "Switch",
+      "kind": "custom",
+      "refersTo": "switch",
+      "description": "On/off setting: accent track when on, line-strong when off, a knob-token knob with the Knob shadow.",
+      "html": "<div class=\"ds-sw-row\"><button class=\"ds-sw\" role=\"switch\" aria-checked=\"true\" aria-label=\"Autoplay\"><i></i></button><button class=\"ds-sw\" role=\"switch\" aria-checked=\"false\" aria-label=\"Show intervals\"><i></i></button></div>",
+      "css": ".ds-sw-row{display:flex;gap:16px}.ds-sw{position:relative;flex:none;width:38px;height:22px;padding:0;border:0;border-radius:999px;background:var(--line-strong,#d3d8dc);transition:background-color 200ms cubic-bezier(0.2,0,0,1)}.ds-sw[aria-checked=true]{background:var(--accent,#2c776e)}.ds-sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:var(--knob,#fff);box-shadow:var(--shadow-knob,0 1px 2px rgb(16 24 32/0.25));transition:transform 200ms cubic-bezier(0.16,1,0.3,1)}.ds-sw[aria-checked=true] i{transform:translateX(16px)}.ds-sw:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}"
+    },
+    {
+      "name": "Segmented",
+      "kind": "custom",
+      "refersTo": "segmented",
+      "description": "A surface-3 track of options; the selected one lifts to raised with the Thumb shadow. Has sm and stretch variants.",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\" aria-label=\"Appearance\"><button class=\"ds-opt\" role=\"radio\" aria-checked=\"false\">System</button><button class=\"ds-opt\" role=\"radio\" aria-checked=\"true\">Light</button><button class=\"ds-opt\" role=\"radio\" aria-checked=\"false\">Dark</button><button class=\"ds-opt\" role=\"radio\" aria-checked=\"false\">Black</button></div>",
+      "css": ".ds-seg{display:inline-flex;padding:3px;border-radius:9px;background:var(--surface-3,#eef0f2);font-family:var(--font-ui,'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif)}.ds-opt{height:28px;padding:0 12px;border:0;border-radius:7px;background:transparent;color:var(--ink-2,#555c62);font-family:inherit;font-size:13px;font-weight:500;transition:background-color 90ms,color 90ms,box-shadow 90ms}.ds-opt:hover{color:var(--ink,#1b1e20)}.ds-opt[aria-checked=true]{background:var(--raised,#fff);color:var(--ink,#1b1e20);box-shadow:var(--shadow-thumb,0 1px 2px rgb(16 24 32/0.12))}.ds-opt:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Theme-tinted source list (translucent over Mica or vibrancy) with Library items and the Deck tree with due totals; resizable from 200 to 380px and collapsible.",
+      "html": "<nav class=\"ds-side\"><button class=\"ds-nav ds-nav-on\">Decks</button><button class=\"ds-nav\">Browse</button><button class=\"ds-nav\">Statistics</button><div class=\"ds-group\">Decks</div><button class=\"ds-nav ds-deck\"><span>English · CET-6</span><span class=\"ds-due\">7</span></button><button class=\"ds-nav ds-deck\"><span>日本語</span><span class=\"ds-due\">16</span></button></nav>",
+      "css": ".ds-side{width:248px;box-sizing:border-box;padding:12px 10px;background:var(--sidebar-surface,color-mix(in oklab,var(--accent,#2c776e) 7%,#f2f4f5));font-family:var(--font-ui,'Segoe UI',system-ui,sans-serif)}.ds-nav{display:flex;align-items:center;gap:10px;width:100%;height:30px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--ink,#1b1e20);font-family:inherit;font-size:13px;font-weight:500;text-align:left;transition:background-color 90ms}.ds-nav:hover{background:color-mix(in oklab,var(--ink,#1b1e20) 6%,transparent)}.ds-nav-on,.ds-nav-on:hover{background:color-mix(in oklab,var(--accent,#2c776e) 13%,transparent);color:color-mix(in oklab,var(--accent,#2c776e) 88%,black)}.ds-nav:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}.ds-group{padding:16px 10px 4px;font-size:12px;font-weight:600;color:var(--ink-2,#555c62)}.ds-deck span:first-child{flex:1}.ds-due{font-size:12px;font-weight:400;font-variant-numeric:tabular-nums;color:var(--ink-2,#555c62)}"
+    },
+    {
+      "name": "Count Pills",
+      "kind": "chip",
+      "refersTo": "count-pill",
+      "description": "New, learning and due counts; a count above zero earns its Anki colour and pill, a zero is muted.",
+      "html": "<div class=\"ds-counts\"><span class=\"ds-count ds-new\">4</span><span class=\"ds-count ds-zero\">0</span><span class=\"ds-count ds-due\">3</span></div>",
+      "css": ".ds-counts{display:flex;gap:24px;font-family:var(--font-ui,'Segoe UI',system-ui,sans-serif)}.ds-count{display:inline-flex;align-items:center;justify-content:center;height:22px;min-width:30px;box-sizing:border-box;padding:0 8px;border-radius:999px;font-size:13px;font-variant-numeric:tabular-nums}.ds-new{font-weight:600;color:var(--count-new,#1f5bc4);background:color-mix(in oklab,var(--count-new,#1f5bc4) var(--tint-pill,11%),transparent)}.ds-due{font-weight:600;color:var(--count-due,#1b6e3a);background:color-mix(in oklab,var(--count-due,#1b6e3a) var(--tint-pill,11%),transparent)}.ds-zero{font-weight:400;color:var(--ink-3,#6f777d)}"
+    },
+    {
+      "name": "Queue Bar",
+      "kind": "custom",
+      "refersTo": "count-pill",
+      "description": "Today's work as one bar, always new, learning, due, at most 520px wide.",
+      "html": "<div class=\"ds-queue\"><div class=\"ds-bar\"><span style=\"flex-grow:16;background:var(--count-new,#1f5bc4)\"></span><span style=\"flex-grow:1;background:var(--count-learn,#b3261e)\"></span><span style=\"flex-grow:12;background:var(--count-due,#1b6e3a)\"></span></div><ul class=\"ds-legend\"><li><i style=\"background:var(--count-new,#1f5bc4)\"></i>New <b>16</b></li><li><i style=\"background:var(--count-learn,#b3261e)\"></i>Learning <b>1</b></li><li><i style=\"background:var(--count-due,#1b6e3a)\"></i>Due <b>12</b></li></ul></div>",
+      "css": ".ds-queue{max-width:520px;font-family:var(--font-ui,'Segoe UI',system-ui,sans-serif)}.ds-bar{display:flex;gap:3px;height:6px;border-radius:999px;overflow:hidden}.ds-bar span{height:100%;border-radius:999px;transition:flex-grow 320ms cubic-bezier(0.16,1,0.3,1)}.ds-legend{display:flex;gap:4px 20px;margin:10px 0 0;padding:0;list-style:none;font-size:12px;color:var(--ink-2,#555c62)}.ds-legend li{display:inline-flex;align-items:center;gap:6px}.ds-legend i{width:8px;height:8px;border-radius:999px}.ds-legend b{font-weight:600;color:var(--ink,#1b1e20);font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Answer Buttons",
+      "kind": "button",
+      "refersTo": "answer-button",
+      "description": "The four answers after reveal: outlined, equal, interval above, label in its answer colour.",
+      "html": "<div class=\"ds-answers\"><button class=\"ds-ans\"><small>&lt;10m</small><span style=\"color:var(--answer-again,#b3261e)\">Again</span></button><button class=\"ds-ans\"><small>2d</small><span style=\"color:var(--answer-hard,#7a5900)\">Hard</span></button><button class=\"ds-ans\"><small>4d</small><span style=\"color:var(--answer-good,#1b6e3a)\">Good</span></button><button class=\"ds-ans\"><small>6d</small><span style=\"color:var(--answer-easy,#1f5bc4)\">Easy</span></button></div>",
+      "css": ".ds-answers{display:flex;gap:8px;max-width:640px;height:60px;font-family:var(--font-ui,'Segoe UI',system-ui,sans-serif)}.ds-ans{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid var(--line,#e4e7ea);border-radius:12px;background:var(--surface,#fff);font-family:inherit;transition:background-color 90ms cubic-bezier(0.2,0,0,1),border-color 90ms,transform 90ms;animation:ds-rise 140ms cubic-bezier(0.16,1,0.3,1) both}.ds-ans:nth-child(2){animation-delay:18ms}.ds-ans:nth-child(3){animation-delay:36ms}.ds-ans:nth-child(4){animation-delay:54ms}.ds-ans:hover{background:var(--surface-2,#f6f7f8);border-color:var(--line-strong,#d3d8dc)}.ds-ans:active{transform:scale(0.96)}.ds-ans:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}.ds-ans small{font-size:12px;font-weight:500;color:var(--ink-3,#6f777d);font-variant-numeric:tabular-nums}.ds-ans span{font-size:14px;font-weight:600}@keyframes ds-rise{from{opacity:0;transform:translateY(6px)}}"
+    },
+    {
+      "name": "Study Strip",
+      "kind": "custom",
+      "refersTo": "answer-button",
+      "description": "The Focus transition's 44px strip with the Deck path, counts and the 2px accent progress line.",
+      "html": "<header class=\"ds-strip\"><span class=\"ds-path\">日本語 <em>›</em> <b>JLPT N2 単語</b></span><span class=\"ds-sc\" style=\"color:var(--count-new,#1f5bc4)\">8</span><span class=\"ds-sc ds-sc0\">0</span><span class=\"ds-sc ds-sc-on\">8</span><div class=\"ds-prog\"><div style=\"width:38%\"></div></div></header>",
+      "css": ".ds-strip{position:relative;display:flex;align-items:center;gap:4px;height:44px;padding:0 12px;background:var(--canvas,#fff);font:13px/1.45 var(--font-ui,'Segoe UI',system-ui,sans-serif)}.ds-path{margin-right:12px;color:var(--ink-2,#555c62)}.ds-path em{font-style:normal;color:var(--ink-3,#6f777d)}.ds-path b{font-weight:600;color:var(--ink,#1b1e20)}.ds-sc{padding:2px 8px;border-radius:999px;font-weight:600;font-variant-numeric:tabular-nums}.ds-sc0{font-weight:400;color:var(--ink-3,#6f777d)}.ds-sc-on{color:var(--count-due,#1b6e3a);background:color-mix(in oklab,var(--count-due,#1b6e3a) var(--tint-pill,11%),transparent)}.ds-prog{position:absolute;left:0;right:0;bottom:0;height:2px;background:color-mix(in oklab,var(--accent,#2c776e) 22%,transparent)}.ds-prog div{height:100%;background:var(--accent,#2c776e);transition:width 200ms cubic-bezier(0.16,1,0.3,1)}"
+    },
+    {
+      "name": "Grouped List",
+      "kind": "card",
+      "refersTo": "group-container",
+      "description": "Settings-style grouped container: 13px heading outside, 12px corners, hairline-divided rows of at least 52px with 14px labels.",
+      "html": "<section class=\"ds-gl\"><h2>Study</h2><div class=\"ds-gl-box\"><div class=\"ds-row\"><div><div>Play audio automatically</div><small>Plays sounds on the Card when the question or answer is shown.</small></div><button class=\"ds-sw\" role=\"switch\" aria-checked=\"true\" aria-label=\"Autoplay\"><i></i></button></div><div class=\"ds-row\"><div>Show next interval on answer buttons</div><button class=\"ds-sw\" role=\"switch\" aria-checked=\"false\" aria-label=\"Show intervals\"><i></i></button></div></div></section>",
+      "css": ".ds-gl{max-width:560px;font-family:var(--font-ui,'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif)}.ds-gl h2{margin:0 0 10px;padding:0 4px;font-size:13px;font-weight:600;color:var(--ink-2,#555c62)}.ds-gl-box{border:1px solid var(--line,#e4e7ea);border-radius:12px;background:var(--surface,#fff);overflow:hidden}.ds-row{display:flex;align-items:center;gap:24px;min-height:52px;padding:10px 16px;box-sizing:border-box;font-size:14px;line-height:1.5;color:var(--ink,#1b1e20)}.ds-row>div{flex:1}.ds-row+.ds-row{border-top:1px solid var(--line,#e4e7ea)}.ds-row small{display:block;margin-top:2px;font-size:12px;color:var(--ink-3,#6f777d)}.ds-sw{position:relative;flex:none;width:38px;height:22px;padding:0;border:0;border-radius:999px;background:var(--line-strong,#d3d8dc);transition:background-color 200ms cubic-bezier(0.2,0,0,1)}.ds-sw[aria-checked=true]{background:var(--accent,#2c776e)}.ds-sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:var(--knob,#fff);box-shadow:var(--shadow-knob,0 1px 2px rgb(16 24 32/0.25));transition:transform 200ms cubic-bezier(0.16,1,0.3,1)}.ds-sw[aria-checked=true] i{transform:translateX(16px)}.ds-sw:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}"
+    },
+    {
+      "name": "Dialog Group",
+      "kind": "card",
+      "refersTo": "dialog-group",
+      "description": "Inside a dialog: a 12px section label over a 10px surface-2 inset group with divided rows and Switch rows of at least 44px.",
+      "html": "<div class=\"ds-dlg\"><h3>Rebuild</h3><div class=\"ds-dg\"><div class=\"ds-dr\"><label>Reschedule cards based on my answers</label><button class=\"ds-sw\" role=\"switch\" aria-checked=\"true\" aria-label=\"Reschedule\"><i></i></button></div><div class=\"ds-dr\"><label>Enable second filter</label><button class=\"ds-sw\" role=\"switch\" aria-checked=\"false\" aria-label=\"Second filter\"><i></i></button></div></div></div>",
+      "css": ".ds-dlg{width:400px;padding:20px;border:1px solid var(--line,#e4e7ea);border-radius:14px;background:var(--raised,#fff);font-family:var(--font-ui,'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif)}.ds-dlg h3{margin:0 0 6px;padding:0 4px;font-size:12px;font-weight:600;color:var(--ink-2,#555c62)}.ds-dg{border:1px solid var(--line,#e4e7ea);border-radius:10px;background:var(--surface-2,#f6f7f8);overflow:hidden}.ds-dr{display:flex;align-items:center;gap:16px;min-height:44px;padding:8px 14px;box-sizing:border-box}.ds-dr+.ds-dr{border-top:1px solid var(--line,#e4e7ea)}.ds-dr label{flex:1;font-size:13px;color:var(--ink,#1b1e20)}.ds-sw{position:relative;flex:none;width:38px;height:22px;padding:0;border:0;border-radius:999px;background:var(--line-strong,#d3d8dc);transition:background-color 200ms cubic-bezier(0.2,0,0,1)}.ds-sw[aria-checked=true]{background:var(--accent,#2c776e)}.ds-sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:999px;background:var(--knob,#fff);box-shadow:var(--shadow-knob,0 1px 2px rgb(16 24 32/0.25));transition:transform 200ms cubic-bezier(0.16,1,0.3,1)}.ds-sw[aria-checked=true] i{transform:translateX(16px)}.ds-sw:focus-visible{outline:2px solid var(--accent,#2c776e);outline-offset:2px}"
+    },
+    {
+      "name": "Menu",
+      "kind": "custom",
+      "refersTo": "menu",
+      "description": "Floating menu: raised surface, 10px corners, Pop shadow, accent-soft highlight, right-aligned shortcuts.",
+      "html": "<div class=\"ds-menu\" role=\"menu\"><div class=\"ds-mi\" tabindex=\"0\">Edit<span>E</span></div><div class=\"ds-mi\" tabindex=\"0\">Mark Note<span>*</span></div><div class=\"ds-sep\"></div><div class=\"ds-mi\" tabindex=\"0\">Bury Card<span>-</span></div><div class=\"ds-mi ds-mi-danger\" tabindex=\"0\">Delete Note<span>Ctrl+Del</span></div></div>",
+      "css": ".ds-menu{width:220px;padding:4px;border:1px solid var(--line,#e4e7ea);border-radius:10px;background:var(--raised,#fff);box-shadow:0 8px 28px rgb(16 24 32/0.14),0 1px 3px rgb(16 24 32/0.08);font-family:var(--font-ui,'Segoe UI',system-ui,sans-serif);animation:ds-pop 140ms cubic-bezier(0.16,1,0.3,1)}.ds-mi{display:flex;align-items:center;height:32px;padding:0 10px;border-radius:6px;font-size:13px;color:var(--ink,#1b1e20);outline:none}.ds-mi span{margin-left:auto;padding-left:24px;font-size:12px;color:var(--ink-3,#6f777d)}.ds-mi:hover,.ds-mi:focus-visible{background:color-mix(in oklab,var(--accent,#2c776e) 13%,transparent)}.ds-mi-danger{color:var(--danger,#b3261e)}.ds-sep{height:1px;margin:4px 0;background:var(--line,#e4e7ea)}@keyframes ds-pop{from{opacity:0;transform:scale(0.97) translateY(-2px)}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Native Desktop, Tinted",
+    "overview": "Hayaki Desktop is built to sit among the platform's own best apps (Apple Notes, Finder, Windows 11 Settings): a source-list sidebar tinted with the current Theme and, where the OS draws one, letting the window backdrop through; an opaque white or near-black work area; system UI fonts at desktop density. It is neither a phone layout stretched across a monitor nor Anki's Qt-and-web patchwork, and it refuses the grey SaaS sidebar with one blue button. The Theme accent is the only voice the frame has; everything else is a neutral role derived from it and the Appearance.\n\nThe study screen is where the system pays off. Starting a session collapses the sidebar and toolbar in one 200ms move into a 44px strip on the Theme canvas, with a 2px accent line draining as Cards are answered; Escape restores the shell. The Card then leads, rendered on its own origin, never restyled by the interface, and the next Card is pre-rendered so an answer lands in under 120ms. Everything around it (counts, answer buttons, menus) stays small, flat and quiet.\n\nEvery colour is a role, never a literal, across ten Themes and three resolved Appearances (Light, Dark, Black). The tokens above are the Hayaki Theme in Light unless suffixed `-dark` or `-black`; Black reuses Dark's accents and signals over true black. The other Themes swap only the accent pair and, for Paper and Midnight, the study canvas. The window keeps the native OS caption on purpose, so Windows Snap Layouts keep working.",
+    "keyCharacteristics": [
+      "Theme-tinted sidebar (accent mixed 7% into a cool neutral in Light, 6% in Dark, 5% in Black); over Mica on Windows 11 and vibrancy on macOS it becomes a translucent tint. The work area is always opaque.",
+      "A sidebar the person can collapse (Ctrl+\\) and resize (200 to 380px).",
+      "One filled accent button per screen state; selection, focus rings, the progress line and pressed tools carry the accent.",
+      "Anki's blue, red and green appear only on new, learning and due counts, the Card-state charts and the four answers; flags, marked, suspended and buried keep Anki's own colours.",
+      "Flat at rest; one shadow (`shadow-pop`) for things that float: menus, popovers, tooltips, dialogs, the command palette, the shortcuts sheet, toasts.",
+      "Grouped containers with 12px corners on screens and 10px inset groups in dialogs; controls at 7 to 10px corners.",
+      "Hierarchy by size and weight in the system face, on an eight-step scale; tabular figures for every number."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Each screen state has at most one filled accent button (Study on Decks, Study Now on a Deck, Show Answer in Study, Save in Deck Options, Add in Add, Open in the profile chooser). Dialogs carry their own single primary. The toolbar's Import and Add are secondary.",
+        "section": "colors"
+      },
+      {
+        "name": "The Anki Signal Rule",
+        "body": "Blue, red and green mean new, learning and due; the four answer colours mean the four answers; flag and marker colours mean flags and markers. Card states never take the Theme accent, so they read the same in every Theme.",
+        "section": "colors"
+      },
+      {
+        "name": "The Earned Pill Rule",
+        "body": "A count wears its colour, weight 600 and a tinted pill only when it is above zero. A zero is `ink-3` at weight 400 with no pill.",
+        "section": "colors"
+      },
+      {
+        "name": "The Role Not Hex Rule",
+        "body": "Surfaces read roles from `src/styles/app.css`; Themes change only the accent pair and canvas. A new surface writes no hex value. The only literal colours in components are content palettes the person picks from (editor text and highlight colours, Image Occlusion mask fills) and the Theme swatches, which preview other Themes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Size-and-Weight Rule",
+        "body": "Hierarchy comes from size and weight (400, 500, 600) only. Nothing is italic, set in capitals or letter-spaced for emphasis, because Chinese and Japanese have no italics or capitals to fall back on.",
+        "section": "typography"
+      },
+      {
+        "name": "The Matched Semibold Rule",
+        "body": "Microsoft YaHei UI and JhengHei UI ship Regular and Bold only, so on Windows with Chinese the semibold step is 660, not 600, and Han glyphs and Latin digits carry the same colour. Yu Gothic UI and the macOS faces keep 600.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Every count, interval, date and version number uses tabular figures, so columns of numbers never jitter.",
+        "section": "typography"
+      },
+      {
+        "name": "The 520 Rule",
+        "body": "The queue bar (new, learning, due) is drawn in one order and colours and is never wider than 520px.",
+        "section": "layout"
+      },
+      {
+        "name": "The Still Card Rule",
+        "body": "Nothing in the study layout changes size between question and answer; the answer band and key row are reserved from the start.",
+        "section": "layout"
+      },
+      {
+        "name": "The One Step Rule",
+        "body": "A surface is either on the page (flat, hairline) or floating (Pop). There is no in-between elevation for cards, panels or buttons; Thumb and Knob are physical cues on control thumbs only.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Opaque Work Area Rule",
+        "body": "The OS backdrop shows through the sidebar and nowhere else. The work area, the study canvas and every floating layer are opaque.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** read colours from the role tokens (`accent`, `surface`, `line`, `ink-2`, `count-due`, `marked`, `flag-1`) and let Themes swap only the accent pair and canvas.",
+      "**Do** set text on the scale (`text-micro` 11, `text-caption` 12, `text-control` 13, `text-body` 14, `text-title` 15, `text-heading` 18, `text-headline` 22, `text-display` 28) so the optical sizes follow.",
+      "**Do** take shadows and tints from their tokens (`shadow-ring`, `shadow-ring-danger`, `shadow-ring-inset`, `shadow-thumb`, `shadow-knob`, `--tint-pill`, `--tint-row`, `--tint-halo`).",
+      "**Do** keep one filled accent button per screen state and make everything else secondary, ghost or icon.",
+      "**Do** draw today's queue as new, learning, due in blue, red, green, at most 520px wide, and Card states in Statistics as new, learning, relearning, young, mature, then suspended and buried.",
+      "**Do** use tabular figures for every number and fixed row heights (30, 32, 36, 44px) so columns hold.",
+      "**Do** use `--dur-fast` (90ms) for hover and press, `--dur-quick` (140ms) for menus, fades and route settles, `--dur` (200ms) for layout moves and dialogs, `--dur-slow` (320ms) for screen entrances and bars, `--ease-out` for entrances and `--ease-standard` for state changes; read them in Motion through `motionTokens()`, and let reduced motion make every motion instant.",
+      "**Do** use the shared `NumberField`, `Switch`, `Segmented` and `Dialog` from `components/ui.tsx`.",
+      "**Do** open dialogs on their first control, and mark the safe choice with `data-autofocus` in confirmations.",
+      "**Do** keep base element rules (html, body, selection, focus ring, caret, scrollbars) inside `@layer base` so Tailwind utilities override them.",
+      "**Do** show every action's Anki shortcut, in tooltips, menus and Kbd keys."
+    ],
+    "donts": [
+      "**Don't** restyle Card Content or move it into the interface's origin; it lives in the card page.",
+      "**Don't** give Card states, counts or answers the Theme accent, or use Anki's signal, flag or marker colours to decorate.",
+      "**Don't** add a second filled primary to a screen, or a shadow to a flat surface; only floating layers take Pop.",
+      "**Don't** let the OS backdrop show through the work area, the canvas or a floating layer.",
+      "**Don't** replace the native window caption with a custom title bar; it would lose Windows Snap Layouts.",
+      "**Don't** use native number spin arrows.",
+      "**Don't** put a dialog's initial focus on its close button.",
+      "**Don't** make hierarchy with italics, capitals or letter-spacing; use size and weight.",
+      "**Don't** write hex values in a screen."
+    ]
+  }
+}

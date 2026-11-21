@@ -1,0 +1,66 @@
+// Copyright: Hayaki contributors
+// License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
+
+// Statistics strings Hayaki adds. Graph titles, descriptions and values use
+// Anki's own words (`tr("statistics-…")`).
+import { makeStrings } from "@/lib/i18n";
+
+export const ts = makeStrings({
+  en: {
+    scope: "Cards to include",
+    period: "Period",
+    currentDeck: "Current Deck",
+    searchApply: "Press Enter to apply the search.",
+    loadError: "Statistics could not be loaded.",
+    noData: "No data for this period",
+    todayLead: "Reviews since today began.",
+    calendarLead: "Reviews on each day of the year.",
+    countsLead: "Every Card in the search, by where it is in its lifecycle.",
+    previousYear: "Previous year",
+    nextYear: "Next year",
+    weekStart: "Week starts on",
+    browseHint: "Click to show these Cards in Browse.",
+    chartKeys: "Use the arrow keys to move between bars.",
+    retry: "Try again",
+    less: "Less",
+    more: "More",
+  },
+  zh: {
+    scope: "包含的卡片",
+    period: "时间范围",
+    currentDeck: "当前牌组",
+    searchApply: "按 Enter 应用搜索。",
+    loadError: "无法载入统计。",
+    noData: "这段时间没有数据",
+    todayLead: "今天开始以来的复习。",
+    calendarLead: "一年中每天的复习。",
+    countsLead: "搜索中的每张卡片，按其所处的阶段。",
+    previousYear: "上一年",
+    nextYear: "下一年",
+    weekStart: "每周开始于",
+    browseHint: "点击在浏览中显示这些卡片。",
+    chartKeys: "使用方向键在柱之间移动。",
+    retry: "重试",
+    less: "少",
+    more: "多",
+  },
+  ja: {
+    scope: "対象のカード",
+    period: "期間",
+    currentDeck: "現在のデッキ",
+    searchApply: "Enter キーで検索を適用します。",
+    loadError: "統計を読み込めませんでした。",
+    noData: "この期間のデータはありません",
+    todayLead: "今日が始まってからの復習。",
+    calendarLead: "1 年の各日の復習。",
+    countsLead: "検索に含まれるすべてのカードを、学習段階ごとに。",
+    previousYear: "前の年",
+    nextYear: "次の年",
+    weekStart: "週の始まり",
+    browseHint: "クリックするとブラウズでこれらのカードを表示します。",
+    chartKeys: "矢印キーでバーを移動します。",
+    retry: "再試行",
+    less: "少",
+    more: "多",
+  },
+});

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Hayaki</title>
+    <script>
+      // Apply the saved appearance before first paint, so there is no flash.
+      try {
+        const s = JSON.parse(localStorage.getItem("hayaki.prefs") || "{}").state || {};
+        const a = s.appearance || "system";
+        const dark = a === "dark" || a === "black" || (a === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+        const r = document.documentElement;
+        r.dataset.theme = s.theme || "hayaki";
+        r.dataset.appearance = dark ? (a === "black" ? "black" : "dark") : "light";
+        r.classList.toggle("dark", dark);
+        const ua = navigator.userAgent;
+        r.dataset.platform = /Windows/i.test(ua) ? "windows" : /Mac OS X|Macintosh/i.test(ua) ? "mac" : "linux";
+        // The window material found on the last run (see src/lib/useAppearance.ts).
+        const material = localStorage.getItem("hayaki.material");
+        if (material) r.dataset.material = material;
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
