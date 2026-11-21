@@ -27,6 +27,11 @@ describe("the sync pill follows the sync store", () => {
     expect(pill?.abortable).toBe(true);
   });
 
+  it("reads counts the engine wraps in bidi isolation marks", () => {
+    useSync.setState({ phase: "media", progress: ["已新增：\u20680\u2069↑ \u206816175\u2069↓"] });
+    expect(pillNow()?.short).toBe("Media 16175↓");
+  });
+
   it("starts with the bare label before any count arrives", () => {
     useSync.setState({ phase: "media", progress: [] });
     expect(pillNow()?.short).toBe("Media");

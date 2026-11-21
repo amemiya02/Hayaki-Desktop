@@ -24,7 +24,8 @@ export interface SyncPill {
 
 /** Up and down counts of Anki's "Added: 1,100↑ 0↓", without the zeros. */
 function mediaCounts(parts: string[]): string {
-  const counts = parts[0]?.match(/[\d.,  ]*\d[\d.,  ]*\s*[↑↓]/gu) ?? [];
+  // Fluent wraps each number in bidi isolation marks (U+2068 … U+2069).
+  const counts = parts[0]?.replace(/[\u2066-\u2069]/g, "").match(/[\d.,  ]*\d[\d.,  ]*\s*[↑↓]/gu) ?? [];
   return counts
     .map((count) => count.replace(/\s+/g, ""))
     .filter((count) => /[1-9]/.test(count))
