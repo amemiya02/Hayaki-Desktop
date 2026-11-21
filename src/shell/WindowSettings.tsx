@@ -3,9 +3,10 @@
 
 /** Settings > View: the interface language, zoom and full screen, as in Anki's Preferences and View menu. */
 import { ExternalLink, Maximize, Minus, Plus, RotateCcw } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
+import { SettingsRow, SettingsSection } from "@/components/settings";
 import { Button, cn, fieldClass, IconButton, Kbd } from "@/components/ui";
 import { displayChord, isMacPlatform } from "./shortcuts";
 import { t, tr, trLabel } from "@/lib/i18n";
@@ -28,18 +29,6 @@ function HintKeys({ text, chords }: { text: string; chords: string[] }) {
   );
 }
 
-function Row({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
-  return (
-    <div className="flex min-h-[52px] items-center gap-6 px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <div className="text-body text-ink">{label}</div>
-        {hint && <div className="mt-0.5 text-caption text-ink-3">{hint}</div>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
 export function WindowSettings() {
   const factor = useZoom((s) => s.factor);
   const [language, setLanguage] = useState(storedLanguage() ?? "");
@@ -58,10 +47,8 @@ export function WindowSettings() {
   };
 
   return (
-    <section className="mt-8 first:mt-0">
-      <h2 className="mb-2.5 px-1 text-control font-semibold text-ink-2">{trLabel("qt-accel-view")}</h2>
-      <div className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">
-        <Row label={tr("preferences-language")} hint={ts("languageHint")}>
+    <SettingsSection title={trLabel("qt-accel-view")}>
+        <SettingsRow label={tr("preferences-language")} hint={ts("languageHint")}>
           <select
             aria-label={tr("preferences-language")}
             value={language}
@@ -76,8 +63,8 @@ export function WindowSettings() {
               </option>
             ))}
           </select>
-        </Row>
-        <Row label={ts("zoom")} hint={<HintKeys text={ts("zoomHint")} chords={["Ctrl+=", "Ctrl+-", "Ctrl+0"].map((c) => displayChord(c))} />}>
+        </SettingsRow>
+        <SettingsRow label={ts("zoom")} hint={<HintKeys text={ts("zoomHint")} chords={["Ctrl+=", "Ctrl+-", "Ctrl+0"].map((c) => displayChord(c))} />}>
           <div className="flex items-center gap-1">
             <IconButton label={trLabel("qt-accel-zoom-out")} disabled={factor <= ZOOM_MIN} onClick={() => zoom("out")}>
               <Minus />
@@ -92,20 +79,19 @@ export function WindowSettings() {
               <RotateCcw />
             </IconButton>
           </div>
-        </Row>
-        <Row label={trLabel("qt-accel-full-screen")} hint={<HintKeys text={ts("fullscreenHint")} chords={[isMacPlatform() ? "\u2303\u2318F" : "F11"]} />}>
+        </SettingsRow>
+        <SettingsRow label={trLabel("qt-accel-full-screen")} hint={<HintKeys text={ts("fullscreenHint")} chords={[isMacPlatform() ? "\u2303\u2318F" : "F11"]} />}>
           <Button onClick={() => void toggleFullscreen()}>
             <Maximize />
             {trLabel("qt-accel-full-screen")}
           </Button>
-        </Row>
-        <Row label={trLabel("qt-accel-guide")} hint={ts("manualHint")}>
+        </SettingsRow>
+        <SettingsRow label={trLabel("qt-accel-guide")} hint={ts("manualHint")}>
           <Button onClick={() => void openManual()}>
             <ExternalLink />
             {ts("manual")}
           </Button>
-        </Row>
-      </div>
-    </section>
+        </SettingsRow>
+    </SettingsSection>
   );
 }

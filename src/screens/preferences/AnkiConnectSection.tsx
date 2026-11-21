@@ -8,41 +8,19 @@
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, Plus, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
+import { SettingsRow, SettingsSection } from "@/components/settings";
 import { Button, cn, IconButton, NumberField, Spinner, Switch, TextField } from "@/components/ui";
 import { checkOrigin, getAnkiConnect, queryKey, setAnkiConnect, type AnkiConnectConfig, type AnkiConnectSnapshot, type AnkiConnectStatus } from "@/lib/ankiconnect";
 import { tac } from "@/lib/strings/ankiconnect";
-
-function Section({ children }: { children: ReactNode }) {
-  return (
-    <section className="mt-8 first:mt-0">
-      <h2 className="mb-2.5 px-1 text-control font-semibold text-ink-2">{tac("title")}</h2>
-      <div className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">{children}</div>
-    </section>
-  );
-}
-
-function Row({ label, hint, htmlFor, children }: { label: string; hint?: ReactNode; htmlFor?: string; children?: ReactNode }) {
-  return (
-    <div className="flex min-h-[52px] items-center gap-6 px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <label htmlFor={htmlFor} className="text-body text-ink">
-          {label}
-        </label>
-        {hint && <div className="mt-0.5 text-caption text-ink-3">{hint}</div>}
-      </div>
-      {children}
-    </div>
-  );
-}
 
 function StatusLine({ status }: { status: AnkiConnectStatus }) {
   const port = (n: number) => String(n);
   const [tone, text] =
     status.state === "listening"
-      ? ["bg-learn", tac("listening", { port: port(status.port) })]
+      ? ["bg-accent", tac("listening", { port: port(status.port) })]
       : status.state === "failed"
         ? ["bg-danger", status.inUse ? tac("portInUse", { port: port(status.port) }) : tac("failed", { port: port(status.port), message: status.message })]
         : ["bg-ink-3", tac("off")];
@@ -72,9 +50,9 @@ function Origins({ origins, onChange }: { origins: string[]; onChange: (next: st
       <label htmlFor="ankiconnect-origin" className="text-body text-ink">
         {tac("origins")}
       </label>
-      <div className="mt-0.5 text-caption text-ink-3">{tac("originsHint")}</div>
+      <div className="mt-0.5 text-pretty text-caption text-ink-3">{tac("originsHint")}</div>
       {origins.length === 0 ? (
-        <div className="mt-3 rounded-[8px] border border-dashed border-line px-3 py-2.5 text-caption text-ink-3">{tac("originsEmpty")}</div>
+        <div className="mt-3 text-pretty rounded-[8px] border border-dashed border-line px-3 py-2.5 text-caption text-ink-3">{tac("originsEmpty")}</div>
       ) : (
         <ul className="mt-3 divide-y divide-line overflow-hidden rounded-[8px] border border-line">
           {origins.map((origin) => (
@@ -174,29 +152,29 @@ export function AnkiConnectSection() {
 
   if (isPending) {
     return (
-      <Section>
+      <SettingsSection title={tac("title")}>
         <div className="grid h-[52px] place-items-center">
           <Spinner />
         </div>
-      </Section>
+      </SettingsSection>
     );
   }
   if (isError || !data) {
     return (
-      <Section>
-        <Row label={tac("loadError")}>
+      <SettingsSection title={tac("title")}>
+        <SettingsRow label={tac("loadError")}>
           <Button size="sm" onClick={() => void refetch()}>
             {tac("retry")}
           </Button>
-        </Row>
-      </Section>
+        </SettingsRow>
+      </SettingsSection>
     );
   }
 
   const { config, status } = data;
   return (
-    <Section>
-      <Row
+    <SettingsSection title={tac("title")}>
+      <SettingsRow
         label={tac("enable")}
         hint={
           <>
@@ -206,14 +184,14 @@ export function AnkiConnectSection() {
         }
       >
         <Switch label={tac("enable")} checked={config.enabled} onChange={(enabled) => save({ enabled })} />
-      </Row>
-      <Row label={tac("port")} hint={tac("portHint")} htmlFor="ankiconnect-port">
+      </SettingsRow>
+      <SettingsRow label={tac("port")} hint={tac("portHint")} htmlFor="ankiconnect-port">
         <NumberField id="ankiconnect-port" label={tac("port")} value={config.port} min={1024} max={65535} onChange={(port) => save({ port })} />
-      </Row>
+      </SettingsRow>
       <Origins origins={config.origins} onChange={(origins) => save({ origins })} />
-      <Row label={tac("apiKey")} hint={tac("apiKeyHint")} htmlFor="ankiconnect-key">
+      <SettingsRow label={tac("apiKey")} hint={tac("apiKeyHint")} htmlFor="ankiconnect-key">
         <ApiKey value={config.apiKey} onChange={(apiKey) => save({ apiKey })} />
-      </Row>
-    </Section>
+      </SettingsRow>
+    </SettingsSection>
   );
 }

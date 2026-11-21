@@ -2,33 +2,23 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 import { ChevronRight, CloudDownload, CloudUpload, ScrollText } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { SettingsRow, SettingsSection } from "@/components/settings";
 import { Button, cn, Dialog, Spinner, Switch, TextField } from "@/components/ui";
-import { languages, t, tr } from "@/lib/i18n";
-import { useNav } from "@/lib/nav";
+import { i18nLoaded, languages, t, tr } from "@/lib/i18n";
 import { canAutoSync, onProfileClose } from "@/lib/lifecycle";
 import { useApp } from "@/lib/session-store";
 import { tl } from "@/lib/strings/lifecycle";
 import { useSync, type FullSyncChoice } from "@/lib/sync";
 
+import { syncToast } from "./sync-pill";
+
 /** As Anki's `can_auto_sync`, from the store's current state. */
 function autoSyncDue(): boolean {
   const s = useSync.getState();
   return canAutoSync({ signedIn: !!s.account, autoSync: s.prefs.autoSync, restored: s.restored });
-}
-
-function MediaLogLink() {
-  return (
-    <button
-      type="button"
-      onClick={() => useSync.getState().showLog(true)}
-      className="mt-1 text-caption font-medium text-accent-ink underline-offset-2 hover:underline"
-    >
-      {tr("sync-media-log-button")}
-    </button>
-  );
 }
 
 type Required = "either" | "upload" | "download";
@@ -55,64 +45,22 @@ export function useSyncAction() {
       setSigningIn(true);
       return;
     }
-    const id = `sync-${Date.now()}`;
-    // On the study route progress lives in the top bar, never over the Card.
-    const show = () => {
-      const s = useSync.getState();
-      if (s.phase === "idle") return;
-      if (useNav.getState().route.name === "study") {
-        toast.dismiss(id);
-        return;
-      }
-      const media = s.phase === "media";
-      toast.loading(media ? t("sync.media") : tr("sync-syncing"), {
-        id,
-        description: media ? (
-          <span className="flex flex-col items-start">
-            {s.progress.length ? <ProgressParts parts={s.progress} /> : tr("sync-media-starting")}
-            <MediaLogLink />
-          </span>
-        ) : s.progress.length ? (
-          <ProgressParts parts={s.progress} />
-        ) : undefined,
-        action: media
-          ? {
-              label: tr("sync-abort-button"),
-              onClick: (event) => {
-                event.preventDefault();
-                useSync.getState().abortMedia();
-              },
-            }
-          : undefined,
-      });
-    };
-    show();
-    const stopSync = useSync.subscribe(show);
-    const stopNav = useNav.subscribe((n, prev) => {
-      if (n.route.name !== prev.route.name) show();
-    });
-    const unsubscribe = () => {
-      stopSync();
-      stopNav();
-    };
-    const result = await sync(askFullSync).finally(unsubscribe);
+    // Progress lives in the toolbar's SyncIndicator; a toast reports the result.
+    await i18nLoaded;
+    const result = await sync(askFullSync);
     const state = useSync.getState();
-    const clear = { action: undefined };
-    if (result === "done") toast.success(tr("sync-collection-complete"), { ...clear, id, description: tr("sync-media-complete") });
-    else if (result === "media-disabled") toast.success(tr("sync-collection-complete"), { ...clear, id, description: undefined });
-    else if (result === "media-aborted")
-      toast.success(tr("sync-collection-complete"), { ...clear, id, description: tr("sync-media-aborted") });
-    else if (result === "media-failed")
-      toast.warning(tr("sync-media-failed"), {
-        id,
-        description: state.lastError ?? undefined,
-        action: { label: tr("sync-media-log-button"), onClick: () => useSync.getState().showLog(true) },
+    const outcome = syncToast(result, state.lastError);
+    if (outcome) {
+      const { level, title, description } = outcome;
+      toast[level](title, {
+        description,
+        action:
+          result === "media-failed"
+            ? { label: tr("sync-media-log-button"), onClick: () => useSync.getState().showLog(true) }
+            : undefined,
       });
-    else if (result === "cancelled") toast.dismiss(id);
-    else {
-      toast.error(t("sync.failed"), { ...clear, id, description: state.lastError ?? undefined });
-      if (!state.account) setSigningIn(true);
     }
+    if (result === "error" && !state.account) setSigningIn(true);
   }, [sync, askFullSync]);
 
   // Each profile has its own account and preferences. As in Anki, a profile
@@ -261,24 +209,6 @@ function MediaLogDialog() {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="mt-8 first:mt-0">
-      <h2 className="mb-2.5 px-1 text-[13px] font-semibold text-ink-2">{title}</h2>
-      <div className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">{children}</div>
-    </section>
-  );
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-[52px] items-center gap-6 px-4 py-2.5">
-      <div className="min-w-0 flex-1 text-[13.5px] text-ink">{label}</div>
-      {children}
-    </div>
-  );
-}
-
 /**
  * Anki's Syncing preferences for the open profile. Anki's "Periodically sync
  * media" is not offered: media syncs with every sync.
@@ -289,49 +219,36 @@ export function SyncPreferencesSection() {
     setPrefs(change).catch((error: unknown) => toast.error(String(error instanceof Error ? error.message : error)));
 
   return (
-    <Section title={tr("preferences-network")}>
+    <SettingsSection title={tr("preferences-network")}>
       {!loaded ? (
         <div className="grid h-[104px] place-items-center">
           <Spinner />
         </div>
       ) : (
         <>
-          <Row label={tr("preferences-automatically-sync-on-profile-openclose")}>
+          <SettingsRow label={tr("preferences-automatically-sync-on-profile-openclose")}>
             <Switch
               label={tr("preferences-automatically-sync-on-profile-openclose")}
               checked={prefs.autoSync}
               onChange={(v) => void save({ autoSync: v })}
             />
-          </Row>
-          <Row label={tr("preferences-synchronize-audio-and-images-too")}>
+          </SettingsRow>
+          <SettingsRow label={tr("preferences-synchronize-audio-and-images-too")}>
             <Switch
               label={tr("preferences-synchronize-audio-and-images-too")}
               checked={prefs.syncMedia}
               onChange={(v) => void save({ syncMedia: v })}
             />
-          </Row>
-          <Row label={tr("sync-media-log-title")}>
+          </SettingsRow>
+          <SettingsRow label={tr("sync-media-log-title")}>
             <Button size="sm" onClick={() => showLog(true)}>
               <ScrollText />
               {tr("sync-media-log-button")}
             </Button>
-          </Row>
+          </SettingsRow>
         </>
       )}
-    </Section>
-  );
-}
-
-/** Each part stays on one line; lines break only between parts. */
-function ProgressParts({ parts }: { parts: string[] }) {
-  return (
-    <span className="flex flex-wrap gap-x-3">
-      {parts.map((part, i) => (
-        <span key={i} className="whitespace-nowrap">
-          {part}
-        </span>
-      ))}
-    </span>
+    </SettingsSection>
   );
 }
 

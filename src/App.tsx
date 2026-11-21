@@ -23,6 +23,7 @@ import { StudyScreen } from "@/screens/Study";
 import { displayChord } from "@/shell/shortcuts";
 import { applyStoredZoom } from "@/shell/zoom";
 import { Sidebar } from "@/shell/Sidebar";
+import { SyncIndicator } from "@/shell/SyncIndicator";
 import { useSyncAction } from "@/shell/Sync";
 import { CommandPalette } from "@/shell/CommandPalette";
 import { ExportDialog, useExport } from "@/shell/ExportDialog";
@@ -111,6 +112,7 @@ function Toolbar() {
         <PanelLeft />
       </IconButton>
       <h1 className="me-auto min-w-0 truncate text-title font-semibold text-ink">{routeTitle(route)}</h1>
+      <SyncIndicator closedClassName="-ms-3" />
       <form
         role="search"
         hidden={route.name === "browse"}

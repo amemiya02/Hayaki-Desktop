@@ -17,6 +17,12 @@ let bundles: FluentBundle[] = [];
 let langs: string[] = ["en-US"];
 let hayakiLang: "en" | "zh" | "ja" = "en";
 
+let markLoaded: () => void = () => undefined;
+/** Resolves once Anki's strings are loaded; `tr` returns the bare key before that. */
+export const i18nLoaded: Promise<void> = new Promise((resolve) => {
+  markLoaded = resolve;
+});
+
 export async function setupI18n(): Promise<void> {
   // A language chosen in Settings restarts the core in it before its strings are read.
   await applyStoredLanguage();
@@ -35,6 +41,7 @@ export async function setupI18n(): Promise<void> {
   hayakiLang = first.startsWith("zh") ? "zh" : first.startsWith("ja") ? "ja" : "en";
   document.documentElement.lang = langs[0] ?? "en";
   document.documentElement.dir = direction();
+  markLoaded();
 }
 
 export function firstLanguage(): string {

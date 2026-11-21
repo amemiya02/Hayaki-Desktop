@@ -7,9 +7,10 @@
  * saved at once.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
+import { SettingsNote, SettingsRow, SettingsSection } from "@/components/settings";
 import { Button, NumberField, Spinner, TextField } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
 import type { Preferences } from "@/lib/anki/proto/anki/config_pb";
@@ -17,40 +18,16 @@ import { tr } from "@/lib/i18n";
 import { tp } from "@/lib/strings/preferences";
 import { SelectField, Switch } from "@/screens/deck-options/controls";
 
-import { AnkiConnectSection } from "./AnkiConnectSection";
 import { minsToSecs, secsToMins, withPreference, type Fields, type Groups } from "./model";
 
 const KEY = ["preferences"] as const;
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="mt-8 first:mt-0">
-      <h2 className="mb-2.5 px-1 text-[13px] font-semibold text-ink-2">{title}</h2>
-      <div className="divide-y divide-line overflow-hidden rounded-[12px] border border-line bg-surface">{children}</div>
-    </section>
-  );
-}
-
-function Row({ label, hint, htmlFor, children }: { label: string; hint?: string; htmlFor?: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-[52px] items-center gap-6 px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <label htmlFor={htmlFor} className="text-[13.5px] text-ink">
-          {label}
-        </label>
-        {hint && <div className="mt-0.5 whitespace-pre-line text-[12px] text-ink-3">{hint}</div>}
-      </div>
-      {children}
-    </div>
-  );
-}
 
 /** A number with Anki's unit after it, such as "mins". */
 function Amount({ id, label, unit, value, min, max, onChange }: { id: string; label: string; unit?: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
   return (
     <div className="flex shrink-0 items-center gap-2">
       <NumberField id={id} label={label} value={value} min={min} max={max} onChange={onChange} />
-      {unit && <span className="w-[120px] text-[12.5px] text-ink-3">{unit}</span>}
+      {unit && <span className="w-[120px] text-caption text-ink-3">{unit}</span>}
     </div>
   );
 }
@@ -97,22 +74,22 @@ export function AnkiPreferencesSections() {
 
   if (isPending) {
     return (
-      <Section title={tr("preferences-scheduler")}>
+      <SettingsSection title={tr("preferences-scheduler")}>
         <div className="grid h-[104px] place-items-center">
           <Spinner />
         </div>
-      </Section>
+      </SettingsSection>
     );
   }
   if (isError || !prefs) {
     return (
-      <Section title={tr("preferences-scheduler")}>
-        <Row label={tp("loadError")}>
+      <SettingsSection title={tr("preferences-scheduler")}>
+        <SettingsRow label={tp("loadError")}>
           <Button size="sm" onClick={() => void refetch()}>
             {tp("retry")}
           </Button>
-        </Row>
-      </Section>
+        </SettingsRow>
+      </SettingsSection>
     );
   }
 
@@ -123,8 +100,8 @@ export function AnkiPreferencesSections() {
 
   return (
     <>
-      <Section title={tr("preferences-scheduler")}>
-        <Row label={tr("preferences-next-day-starts-at")} htmlFor="pref-rollover">
+      <SettingsSection title={tr("preferences-scheduler")}>
+        <SettingsRow label={tr("preferences-next-day-starts-at")} htmlFor="pref-rollover">
           <Amount
             id="pref-rollover"
             label={tr("preferences-next-day-starts-at")}
@@ -134,8 +111,8 @@ export function AnkiPreferencesSections() {
             max={23}
             onChange={(v) => set("scheduling", "rollover", v)}
           />
-        </Row>
-        <Row label={tr("preferences-learn-ahead-limit")} htmlFor="pref-learn-ahead">
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-learn-ahead-limit")} htmlFor="pref-learn-ahead">
           <Amount
             id="pref-learn-ahead"
             label={tr("preferences-learn-ahead-limit")}
@@ -145,8 +122,8 @@ export function AnkiPreferencesSections() {
             max={999}
             onChange={(v) => set("scheduling", "learnAheadSecs", minsToSecs(v))}
           />
-        </Row>
-        <Row label={tr("preferences-timebox-time-limit")} htmlFor="pref-timebox">
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-timebox-time-limit")} htmlFor="pref-timebox">
           <Amount
             id="pref-timebox"
             label={tr("preferences-timebox-time-limit")}
@@ -156,49 +133,49 @@ export function AnkiPreferencesSections() {
             max={9999}
             onChange={(v) => set("reviewing", "timeLimitSecs", minsToSecs(v))}
           />
-        </Row>
-      </Section>
+        </SettingsRow>
+      </SettingsSection>
 
-      <Section title={tr("preferences-review")}>
-        <Row label={tr("preferences-show-play-buttons-on-cards-with")}>
+      <SettingsSection title={tr("preferences-review")}>
+        <SettingsRow label={tr("preferences-show-play-buttons-on-cards-with")}>
           <Switch
             label={tr("preferences-show-play-buttons-on-cards-with")}
             checked={!reviewing?.hideAudioPlayButtons}
             onChange={(v) => set("reviewing", "hideAudioPlayButtons", !v)}
           />
-        </Row>
-        <Row label={tr("preferences-interrupt-current-audio-when-answering")}>
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-interrupt-current-audio-when-answering")}>
           <Switch
             label={tr("preferences-interrupt-current-audio-when-answering")}
             checked={!!reviewing?.interruptAudioWhenAnswering}
             onChange={(v) => set("reviewing", "interruptAudioWhenAnswering", v)}
           />
-        </Row>
-        <Row label={tr("preferences-show-remaining-card-count")}>
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-show-remaining-card-count")}>
           <Switch
             label={tr("preferences-show-remaining-card-count")}
             checked={!!reviewing?.showRemainingDueCounts}
             onChange={(v) => set("reviewing", "showRemainingDueCounts", v)}
           />
-        </Row>
-        <Row label={tr("preferences-show-next-review-time-above-answer")}>
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-show-next-review-time-above-answer")}>
           <Switch
             label={tr("preferences-show-next-review-time-above-answer")}
             checked={!!reviewing?.showIntervalsOnButtons}
             onChange={(v) => set("reviewing", "showIntervalsOnButtons", v)}
           />
-        </Row>
-        <Row label={tr("preferences-generate-latex-images-automatically")}>
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-generate-latex-images-automatically")}>
           <Switch
             label={tr("preferences-generate-latex-images-automatically")}
             checked={!!editing?.renderLatex}
             onChange={(v) => set("editing", "renderLatex", v)}
           />
-        </Row>
-      </Section>
+        </SettingsRow>
+      </SettingsSection>
 
-      <Section title={tr("preferences-editing")}>
-        <Row label={tr("preferences-default-deck")} htmlFor="pref-default-deck">
+      <SettingsSection title={tr("preferences-editing")}>
+        <SettingsRow label={tr("preferences-default-deck")} htmlFor="pref-default-deck">
           <SelectField
             id="pref-default-deck"
             label={tr("preferences-default-deck")}
@@ -209,39 +186,39 @@ export function AnkiPreferencesSections() {
             ]}
             onChange={(v) => set("editing", "addingDefaultsToCurrentDeck", v === 0)}
           />
-        </Row>
-        <Row label={tr("preferences-paste-clipboard-images-as-png")}>
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-paste-clipboard-images-as-png")}>
           <Switch
             label={tr("preferences-paste-clipboard-images-as-png")}
             checked={!!editing?.pasteImagesAsPng}
             onChange={(v) => set("editing", "pasteImagesAsPng", v)}
           />
-        </Row>
-        <Row label={tr("preferences-paste-without-shift-key-strips-formatting")}>
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-paste-without-shift-key-strips-formatting")}>
           <Switch
             label={tr("preferences-paste-without-shift-key-strips-formatting")}
             checked={!!editing?.pasteStripsFormatting}
             onChange={(v) => set("editing", "pasteStripsFormatting", v)}
           />
-        </Row>
-      </Section>
+        </SettingsRow>
+      </SettingsSection>
 
-      <Section title={tr("preferences-browsing")}>
-        <Row label={tr("preferences-default-search-text")} htmlFor="pref-default-search">
+      <SettingsSection title={tr("preferences-browsing")}>
+        <SettingsRow label={tr("preferences-default-search-text")} htmlFor="pref-default-search">
           <SearchText value={editing?.defaultSearchText ?? ""} onChange={(v) => set("editing", "defaultSearchText", v)} />
-        </Row>
-        <Row label={tr("preferences-ignore-accents-in-search")}>
+        </SettingsRow>
+        <SettingsRow label={tr("preferences-ignore-accents-in-search")}>
           <Switch
             label={tr("preferences-ignore-accents-in-search")}
             checked={!!editing?.ignoreAccentsInSearch}
             onChange={(v) => set("editing", "ignoreAccentsInSearch", v)}
           />
-        </Row>
-      </Section>
+        </SettingsRow>
+      </SettingsSection>
 
-      <Section title={tr("preferences-backups")}>
-        <div className="px-4 py-3 text-[12.5px] leading-relaxed text-ink-2">{tr("preferences-backup-explanation").replace(/\s*\n\s*/g, " ")}</div>
-        <Row label={stripColon(tr("preferences-minutes-between-backups"))} htmlFor="pref-backup-mins">
+      <SettingsSection title={tr("preferences-backups")}>
+        <SettingsNote>{tr("preferences-backup-explanation").replace(/\s*\n\s*/g, " ")}</SettingsNote>
+        <SettingsRow label={stripColon(tr("preferences-minutes-between-backups"))} htmlFor="pref-backup-mins">
           <NumberField
             id="pref-backup-mins"
             label={stripColon(tr("preferences-minutes-between-backups"))}
@@ -250,8 +227,8 @@ export function AnkiPreferencesSections() {
             max={9999}
             onChange={(v) => set("backups", "minimumIntervalMins", v)}
           />
-        </Row>
-        <Row label={stripColon(tr("preferences-daily-backups"))} htmlFor="pref-backup-daily">
+        </SettingsRow>
+        <SettingsRow label={stripColon(tr("preferences-daily-backups"))} htmlFor="pref-backup-daily">
           <NumberField
             id="pref-backup-daily"
             label={stripColon(tr("preferences-daily-backups"))}
@@ -260,8 +237,8 @@ export function AnkiPreferencesSections() {
             max={9999}
             onChange={(v) => set("backups", "daily", v)}
           />
-        </Row>
-        <Row label={stripColon(tr("preferences-weekly-backups"))} htmlFor="pref-backup-weekly">
+        </SettingsRow>
+        <SettingsRow label={stripColon(tr("preferences-weekly-backups"))} htmlFor="pref-backup-weekly">
           <NumberField
             id="pref-backup-weekly"
             label={stripColon(tr("preferences-weekly-backups"))}
@@ -270,8 +247,8 @@ export function AnkiPreferencesSections() {
             max={9999}
             onChange={(v) => set("backups", "weekly", v)}
           />
-        </Row>
-        <Row label={stripColon(tr("preferences-monthly-backups"))} htmlFor="pref-backup-monthly">
+        </SettingsRow>
+        <SettingsRow label={stripColon(tr("preferences-monthly-backups"))} htmlFor="pref-backup-monthly">
           <NumberField
             id="pref-backup-monthly"
             label={stripColon(tr("preferences-monthly-backups"))}
@@ -280,10 +257,8 @@ export function AnkiPreferencesSections() {
             max={9999}
             onChange={(v) => set("backups", "monthly", v)}
           />
-        </Row>
-      </Section>
-
-      <AnkiConnectSection />
+        </SettingsRow>
+      </SettingsSection>
     </>
   );
 }

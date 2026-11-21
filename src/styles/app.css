@@ -376,6 +376,12 @@
     cursor: default;
   }
 
+  /* Strict kinsoku keeps closing punctuation off the start of a line. */
+  :lang(zh),
+  :lang(ja) {
+    line-break: strict;
+  }
+
   body {
     margin: 0;
     background: var(--window);

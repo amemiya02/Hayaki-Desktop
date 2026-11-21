@@ -49,7 +49,7 @@ export const useExport = create<{
 
 function Check({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <label className={cn("flex h-8 items-center gap-2.5 text-[13px] text-ink", disabled && "opacity-45")}>
+    <label className={cn("flex h-8 items-center gap-2.5 text-control text-ink", disabled && "opacity-45")}>
       <input
         type="checkbox"
         disabled={disabled}
@@ -62,7 +62,7 @@ function Check({ label, checked, onChange, disabled }: { label: string; checked:
   );
 }
 
-const selectClass = "h-8 rounded-[8px] border border-line bg-surface px-2 text-[13px] text-ink outline-none focus:border-accent";
+const selectClass = "h-8 rounded-[8px] border border-line bg-surface px-2 text-control text-ink outline-none focus:border-accent";
 
 const exportLabel = () => tr("exporting-export").replace(/\.\.\.$|…$/, "");
 
@@ -168,7 +168,7 @@ export function ExportDialog() {
         }
       >
         <div className="flex flex-col gap-4 pb-1">
-          <label className="flex flex-col gap-1.5 text-[12.5px] font-medium text-ink-2">
+          <label className="flex flex-col gap-1.5 text-caption font-medium text-ink-2">
             {t("export.format")}
             <select value={format} onChange={(e) => setFormat(e.target.value as Format)} className={selectClass}>
               {formats.map((f) => (
@@ -179,10 +179,10 @@ export function ExportDialog() {
             </select>
           </label>
           {(format === "apkg" || isCollection) && (
-            <p className="text-[12.5px] leading-relaxed text-ink-2">{format === "apkg" ? t("export.apkgMeans") : t("export.colpkgMeans")}</p>
+            <p className="text-caption leading-relaxed text-ink-2">{format === "apkg" ? t("export.apkgMeans") : t("export.colpkgMeans")}</p>
           )}
           {!isCollection && (
-            <label className="flex flex-col gap-1.5 text-[12.5px] font-medium text-ink-2">
+            <label className="flex flex-col gap-1.5 text-caption font-medium text-ink-2">
               {tr("decks-deck")}
               <select value={deck} onChange={(e) => setDeck(e.target.value)} className={selectClass}>
                 {noteIds ? (

@@ -15,6 +15,7 @@ import { Archive, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 
 import { confirm } from "@/components/confirm";
+import { SettingsNote, SettingsRow, SettingsSection } from "@/components/settings";
 import { Button, Spinner } from "@/components/ui";
 import { languages, tr, trLabel } from "@/lib/i18n";
 import { backupDate, beforeProfileClose, formatSize, type BackupEntry } from "@/lib/lifecycle";
@@ -106,20 +107,19 @@ export function BackupsSection() {
     );
   } else if (isError || !data) {
     body = (
-      <div className="flex min-h-[52px] items-center gap-6 px-4 py-2.5">
-        <span className="min-w-0 flex-1 text-body text-ink">{tl("loadError")}</span>
+      <SettingsRow label={tl("loadError")}>
         <Button size="sm" onClick={() => void refetch()}>
           {tl("retry")}
         </Button>
-      </div>
+      </SettingsRow>
     );
   } else if (data.length === 0) {
-    body = <div className="px-4 py-4 text-control text-ink-3">{tl("noBackups")}</div>;
+    body = <SettingsNote>{tl("noBackups")}</SettingsNote>;
   } else {
     body = (
       <ul aria-label={tl("backupsTitle")} className="max-h-[320px] divide-y divide-line overflow-y-auto">
         {data.map((backup) => (
-          <li key={backup.name} className="flex min-h-[48px] items-center gap-6 px-4 py-2">
+          <li key={backup.name} className="flex min-h-[52px] items-center gap-6 px-4 py-2.5">
             <div className="min-w-0 flex-1">
               <div className="tabular text-body text-ink">{dates.format(backupDate(backup.stamp))}</div>
               <div className="tabular text-caption text-ink-3">{formatSize(backup.size, languages())}</div>
@@ -138,24 +138,19 @@ export function BackupsSection() {
   }
 
   return (
-    <section className="mt-8 first:mt-0">
-      <h2 className="mb-2.5 px-1 text-[13px] font-semibold text-ink-2">{tl("backupsTitle")}</h2>
-      <div className="overflow-hidden rounded-[12px] border border-line bg-surface">
-        <div className="border-b border-line px-4 py-3 text-[12.5px] leading-relaxed text-ink-2">
-          {restored ? tr("qt-misc-automatic-syncing-and-backups-have-been") : tl("backupsHint")}
-        </div>
-        {body}
-        <div className="flex gap-2 border-t border-line px-4 py-2.5">
-          <Button size="sm" variant="ghost" onClick={() => void createBackupNow().finally(refresh)}>
-            <Archive />
-            {trLabel("qt-accel-create-backup")}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => void openBackup().finally(refresh)}>
-            <FolderOpen />
-            {tr("profiles-open-backup")}
-          </Button>
-        </div>
+    <SettingsSection title={tl("backupsTitle")}>
+      <SettingsNote>{restored ? tr("qt-misc-automatic-syncing-and-backups-have-been") : tl("backupsHint")}</SettingsNote>
+      {body}
+      <div className="flex gap-2 px-4 py-2.5">
+        <Button size="sm" variant="ghost" onClick={() => void createBackupNow().finally(refresh)}>
+          <Archive />
+          {trLabel("qt-accel-create-backup")}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => void openBackup().finally(refresh)}>
+          <FolderOpen />
+          {tr("profiles-open-backup")}
+        </Button>
       </div>
-    </section>
+    </SettingsSection>
   );
 }
