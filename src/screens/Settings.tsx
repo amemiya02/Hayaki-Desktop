@@ -10,13 +10,15 @@ import { toast } from "sonner";
 import { Avatar, chooseAvatar } from "@/components/Avatar";
 import { confirm } from "@/components/confirm";
 import { SettingsRow, SettingsSection } from "@/components/settings";
-import { Button, cn, Dialog, Segmented, TextField } from "@/components/ui";
+import { Button, cn, Dialog, Segmented, Spinner, Switch, TextField } from "@/components/ui";
 import { firstLanguage, t, tr } from "@/lib/i18n";
 import { usePrefs } from "@/lib/prefs";
 import { beforeProfileClose } from "@/lib/lifecycle";
 import { checkDataFolder, createProfile, dataFolder, setDataFolder, type DataFolder } from "@/lib/profiles";
 import { useApp } from "@/lib/session-store";
 import { useNav } from "@/lib/nav";
+import type { HayakiKey } from "@/lib/strings";
+import { downloadShare, useUpdates } from "@/lib/updates";
 import { tp } from "@/lib/strings/plugins";
 import { themeColors, themeNames, themeOrder, type Appearance, type ResolvedAppearance, type ThemeId } from "@/lib/themes";
 import { useResolvedAppearance } from "@/lib/useAppearance";
@@ -72,6 +74,122 @@ function ThemePreview({ id, selected, resolved, onSelect }: { id: ThemeId; selec
         <span className={cn("truncate text-caption", selected ? "font-semibold text-ink" : "text-ink-2")}>{themeLabel(id)}</span>
       </span>
     </button>
+  );
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function UpdateRows() {
+  const { status, check, download, install } = useUpdates();
+  const autoCheck = usePrefs((s) => s.autoCheckUpdates);
+  const setPref = usePrefs((s) => s.set);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const update = "update" in status ? status.update : undefined;
+
+  const run = (action: () => Promise<unknown>, failed: HayakiKey) => () =>
+    void action().catch((error) => toast.error(t(failed), { description: errorMessage(error) }));
+
+  const share = status.kind === "downloading" ? downloadShare(status.downloaded, status.total) : null;
+  const percent = share === null ? "" : new Intl.NumberFormat(undefined, { style: "percent" }).format(share);
+
+  let hint: string;
+  switch (status.kind) {
+    case "checking":
+      hint = t("settings.updatesChecking");
+      break;
+    case "latest":
+      hint = t("settings.updatesLatest");
+      break;
+    case "available":
+      hint = t("settings.updatesAvailable", { version: status.update.version });
+      break;
+    case "downloading":
+      hint = t("settings.updatesDownloading", { percent });
+      break;
+    case "ready":
+      hint = t("settings.updatesReady");
+      break;
+    case "installing":
+      hint = t("settings.updatesInstalling");
+      break;
+    case "error":
+      hint = status.update ? t("settings.updatesFailed") : t("settings.updatesCheckFailed");
+      break;
+    default:
+      hint = t("settings.updatesHint");
+  }
+
+  let action;
+  switch (status.kind) {
+    case "available":
+      action = (
+        <Button size="sm" variant="primary" onClick={run(download, "settings.updatesFailed")}>
+          {t("settings.updatesDownload")}
+        </Button>
+      );
+      break;
+    case "error":
+      action = status.update ? (
+        <Button size="sm" variant="primary" onClick={run(download, "settings.updatesFailed")}>
+          {t("common.retry")}
+        </Button>
+      ) : (
+        <Button size="sm" onClick={run(check, "settings.updatesCheckFailed")}>
+          {t("settings.updatesCheck")}
+        </Button>
+      );
+      break;
+    case "downloading":
+      action = (
+        <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={share === null ? undefined : Math.round(share * 100)}>
+          <span
+            className={cn("block h-full rounded-full bg-accent transition-[width] duration-[var(--dur-fast)]", share === null && "w-1/3 animate-pulse")}
+            style={share === null ? undefined : { width: `${share * 100}%` }}
+          />
+        </span>
+      );
+      break;
+    case "ready":
+      action = (
+        <Button size="sm" variant="primary" onClick={run(install, "settings.updatesFailed")}>
+          {t("settings.updatesRestart")}
+        </Button>
+      );
+      break;
+    case "installing":
+    case "checking":
+      action = <Spinner />;
+      break;
+    default:
+      action = (
+        <Button size="sm" onClick={run(check, "settings.updatesCheckFailed")}>
+          {t("settings.updatesCheck")}
+        </Button>
+      );
+  }
+
+  return (
+    <>
+      <SettingsRow label={t("settings.updates")} hint={<span aria-live="polite">{hint}</span>}>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {update?.notes && (
+            <Button size="sm" variant="ghost" aria-expanded={notesOpen} onClick={() => setNotesOpen((o) => !o)}>
+              {t("settings.updatesNotes")}
+              <ChevronRight className={cn("transition-transform duration-[var(--dur-fast)]", notesOpen && "rotate-90")} />
+            </Button>
+          )}
+          {action}
+        </div>
+      </SettingsRow>
+      {notesOpen && update?.notes && (
+        <div className="selectable max-h-60 overflow-y-auto whitespace-pre-wrap px-4 py-3 text-caption leading-relaxed text-ink-2">{update.notes}</div>
+      )}
+      <SettingsRow label={t("settings.updatesAuto")}>
+        <Switch label={t("settings.updatesAuto")} checked={autoCheck} onChange={(v) => setPref("autoCheckUpdates", v)} />
+      </SettingsRow>
+    </>
   );
 }
 
@@ -278,6 +396,7 @@ export function SettingsScreen() {
           <SettingsRow label={t("settings.engine")}>
             <span className="tabular text-control text-ink-2">Anki {info?.ankiVersion}</span>
           </SettingsRow>
+          <UpdateRows />
           <DataFolderRow />
           <SettingsRow label={t("settings.source")} hint="AGPL-3.0-or-later">
             <Button size="sm" onClick={() => void openUrl("https://github.com/amemiya02")}>

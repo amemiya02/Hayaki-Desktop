@@ -5,6 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Download, PanelLeft, Plus, Search } from "lucide-react";
 import { MotionConfig, motion } from "motion/react";
 import { lazy, Suspense, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { toast } from "sonner";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppToaster, Button, cn, IconButton, Kbd, motionTokens, Spinner, TextField, TooltipProvider } from "@/components/ui";
@@ -15,6 +16,7 @@ import { useCurrentDeck } from "@/lib/queries";
 import { useApp } from "@/lib/session-store";
 import { clampSidebarWidth, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN, usePrefs } from "@/lib/prefs";
 import { ts } from "@/lib/strings/shell";
+import { useUpdates } from "@/lib/updates";
 import { useAppearanceSync, useWindowMaterial } from "@/lib/useAppearance";
 import { DeckOverview } from "@/screens/DeckOverview";
 import { DecksScreen } from "@/screens/Decks";
@@ -441,10 +443,32 @@ function useWebViewAccelerators(): void {
   }, []);
 }
 
+/** Once per launch, a while after the window is up, and quietly unless there is a newer version. */
+function useLaunchUpdateCheck(): void {
+  useEffect(() => {
+    if (import.meta.env.DEV || !usePrefs.getState().autoCheckUpdates) return;
+    const timer = window.setTimeout(() => {
+      useUpdates
+        .getState()
+        .check()
+        .then((update) => {
+          if (!update) return;
+          toast(t("settings.updatesToast", { version: update.version }), {
+            duration: 12_000,
+            action: { label: t("settings.updatesView"), onClick: () => useNav.getState().go({ name: "settings" }) },
+          });
+        })
+        .catch((error) => console.warn("update check", error));
+    }, 8_000);
+    return () => window.clearTimeout(timer);
+  }, []);
+}
+
 export function App() {
   useAppearanceSync();
   useWindowMaterial();
   useWebViewAccelerators();
+  useLaunchUpdateCheck();
   const status = useApp((s) => s.status);
 
   useEffect(() => {
