@@ -4,14 +4,13 @@
 /**
  * Anki's Add dialog as a screen: choose a Note Type and a Deck, fill in the
  * fields and tags, and add. Sticky fields keep their content for the next
- * Note; a side panel shows this session's history or a live Card preview.
+ * Note; a side panel shows the history of added Notes or a live Card preview.
  */
 import { clone } from "@bufbuild/protobuf";
 import { useQuery } from "@tanstack/react-query";
 import { ImagePlus, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { create } from "zustand";
 
 import { CardPreview, type PreviewSide } from "@/components/editor/CardPreview";
 import { isImageOcclusion } from "@/components/editor/markup";
@@ -30,22 +29,9 @@ import { localeCompare, t, tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { te } from "@/lib/strings/editor";
 
+import { useAddHistory } from "./history";
+
 const ORIGIN = "add";
-
-/* ------------------------------ Session history ------------------------------ */
-
-interface HistoryEntry {
-  id: bigint;
-  text: string;
-  notetype: string;
-  deck: string;
-}
-
-const useAddHistory = create<{ entries: HistoryEntry[]; push(e: HistoryEntry): void; remove(id: bigint): void }>((set) => ({
-  entries: [],
-  push: (entry) => set((s) => ({ entries: [entry, ...s.entries].slice(0, 100) })),
-  remove: (id) => set((s) => ({ entries: s.entries.filter((e) => e.id !== id) })),
-}));
 
 /* ------------------------------ Panel preference ------------------------------ */
 
@@ -99,6 +85,13 @@ export function AddScreen() {
   const [notetypeId, setNotetypeId] = useState<bigint | null>(null);
   const [deckId, setDeckId] = useState<bigint | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+
+  // The history carries over from earlier sessions; Notes deleted since drop out of it.
+  useEffect(() => {
+    const history = useAddHistory.getState();
+    history.load();
+    void history.prune();
+  }, []);
   const [notetype, setNotetype] = useState<Notetype | null>(null);
   const [template, setTemplate] = useState<Note | null>(null);
   const [fields, setFields] = useState<string[]>([]);

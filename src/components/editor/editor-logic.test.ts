@@ -108,6 +108,12 @@ describe("cloze and MathJax", () => {
     expect(surroundText("x", 1, 1, mathSurround("inline"))).toEqual({ text: "x\\(\\)", selectionStart: 3, selectionEnd: 3 });
     expect(mathSurround("block")).toEqual({ prefix: "\\[", suffix: "\\]" });
   });
+
+  it("wraps LaTeX like Anki's Ctrl+T chords", () => {
+    expect(mathSurround("latex")).toEqual({ prefix: "[latex]", suffix: "[/latex]" });
+    expect(mathSurround("latexEquation")).toEqual({ prefix: "[$]", suffix: "[/$]" });
+    expect(mathSurround("latexMathEnv")).toEqual({ prefix: "[$$]", suffix: "[/$$]" });
+  });
 });
 
 describe("carry fields between Note Types", () => {

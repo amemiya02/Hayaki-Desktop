@@ -342,6 +342,10 @@ export function EditorToolbar({
               <MenuRow label={tr("editing-mathjax-inline")} shortcut="Ctrl+M, M" onClick={() => onMath("inline")} icon={<Sigma />} />
               <MenuRow label={tr("editing-mathjax-block")} shortcut="Ctrl+M, E" onClick={() => onMath("block")} icon={<Sigma />} />
               <MenuRow label={tr("editing-mathjax-chemistry")} shortcut="Ctrl+M, C" onClick={() => onMath("chemistry")} icon={<Sigma />} />
+              <div role="separator" className="my-1 h-px bg-line" />
+              <MenuRow label={tr("editing-latex")} shortcut="Ctrl+T, T" onClick={() => onMath("latex")} icon={<Sigma />} />
+              <MenuRow label={tr("editing-latex-equation")} shortcut="Ctrl+T, E" onClick={() => onMath("latexEquation")} icon={<Sigma />} />
+              <MenuRow label={tr("editing-latex-math-env")} shortcut="Ctrl+T, M" onClick={() => onMath("latexMathEnv")} icon={<Sigma />} />
             </div>
           </Popover.Close>
         </div>

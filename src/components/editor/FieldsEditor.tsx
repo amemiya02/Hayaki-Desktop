@@ -32,8 +32,11 @@ import { mediaUrl } from "@/lib/study/audio";
 import { exec, focusAtEnd, insertHtml, insertText, isCommandActive, rememberSelection, surround } from "./dom";
 import { EditorField, type FieldConfigView } from "./EditorField";
 import { EditorToolbar, HIGHLIGHT_COLOURS, TEXT_COLOURS, type ColourKind } from "./EditorToolbar";
-import { clozeNumbersIn, clozeSurround, mathSurround, nextClozeNumber, type MathKind } from "./markup";
+import { clozeNumbersIn, clozeSurround, isMathjaxKind, mathSurround, nextClozeNumber, type MathKind } from "./markup";
+import { mathChip, mathStored } from "./mathjax";
 import { isMediaPath, MEDIA_EXTENSIONS, mediaReference } from "./media-src";
+import { isClipboardBitmap } from "./paste";
+import { MATH_INSERTED_EVENT } from "./RichTextInput";
 import { TagEditor, type TagEditorHandle } from "./TagEditor";
 
 export interface FieldsEditorHandle {
@@ -71,6 +74,12 @@ type InputKind = "rich" | "plain";
 
 const COMMANDS_SHOWN = ["bold", "italic", "underline", "superscript", "subscript", "insertUnorderedList", "insertOrderedList", "justifyCenter", "justifyRight", "justifyFull"];
 
+/** What the second key of each chord inserts: Ctrl+M for MathJax, Ctrl+T for LaTeX. */
+const CHORDS: Record<"m" | "t", Partial<Record<string, MathKind>>> = {
+  m: { KeyM: "inline", KeyE: "block", KeyC: "chemistry" },
+  t: { KeyT: "latex", KeyE: "latexEquation", KeyM: "latexMathEnv" },
+};
+
 const COLOUR_KEY = "hayaki.editor.colours";
 
 function loadColours(): Record<ColourKind, string> {
@@ -95,7 +104,7 @@ function fieldViews(notetype: Notetype): FieldConfigView[] {
 
 function pastedName(file: File): string {
   const ext = file.type.split("/")[1]?.replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "") || "bin";
-  if (file.name && file.name !== "image.png" && file.name !== "blob") return file.name;
+  if (file.name && file.name !== "blob" && !isClipboardBitmap(file)) return file.name;
   return `paste-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.${ext}`;
 }
 
@@ -144,7 +153,8 @@ export const FieldsEditor = forwardRef<FieldsEditorHandle, FieldsEditorProps>(fu
   const [colours, setColours] = useState(loadColours);
   const [colourOpen, setColourOpen] = useState<ColourKind | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
-  const chord = useRef<number>(0);
+  /** The first key of a Ctrl+M or Ctrl+T chord, and when it was pressed. */
+  const chord = useRef<{ lead: "m" | "t"; at: number } | null>(null);
   const tagEditor = useRef<TagEditorHandle>(null);
   const root = useRef<HTMLDivElement>(null);
   const latest = useRef({ fields, collapsed, richOpen, htmlOpen });
@@ -253,7 +263,17 @@ export const FieldsEditor = forwardRef<FieldsEditorHandle, FieldsEditorProps>(fu
 
   const math = (kind: MathKind) => {
     const t = target();
-    if (t) surround(t.element, mathSurround(kind));
+    if (!t) return;
+    if (t.kind === "rich" && isMathjaxKind(kind)) {
+      // MathJax goes in as a chip with its editor open; the selection becomes its source.
+      rememberSelection(t.element);
+      const selected = document.getSelection()?.toString() ?? "";
+      const source = kind === "chemistry" ? `\\ce{${selected}}` : selected;
+      insertHtml(t.element, mathChip(mathStored(source), kind === "block", true));
+      t.element.dispatchEvent(new Event(MATH_INSERTED_EVENT));
+      return;
+    }
+    surround(t.element, mathSurround(kind));
   };
 
   /** Stores files and returns references to insert: display URLs for rich text, bare names for HTML. */
@@ -388,16 +408,19 @@ export const FieldsEditor = forwardRef<FieldsEditorHandle, FieldsEditorProps>(fu
     const mod = e.ctrlKey || e.metaKey;
     const t = active.current;
 
-    if (chord.current && Date.now() - chord.current < 1500) {
-      chord.current = 0;
-      const kind = e.code === "KeyM" ? "inline" : e.code === "KeyE" ? "block" : e.code === "KeyC" ? "chemistry" : null;
+    // Pressing Ctrl again for the second key is not the second key.
+    if (["Control", "Meta", "Shift", "Alt"].includes(e.key)) return;
+    const lead = chord.current && Date.now() - chord.current.at < 1500 ? chord.current.lead : null;
+    chord.current = null;
+    if (lead) {
+      const kind = CHORDS[lead][e.code];
       if (kind) {
         e.preventDefault();
+        e.stopPropagation();
         math(kind);
         return;
       }
     }
-    chord.current = 0;
 
     if (e.key === "F3") {
       e.preventDefault();
@@ -429,7 +452,8 @@ export const FieldsEditor = forwardRef<FieldsEditorHandle, FieldsEditorProps>(fu
     };
     if (e.shiftKey && code === "KeyX") return press(() => toggleHtml(t.index));
     if (e.shiftKey && code === "KeyC") return press(() => void cloze(!e.altKey));
-    if (!e.shiftKey && !e.altKey && code === "KeyM") return press(() => (chord.current = Date.now()));
+    if (!e.shiftKey && !e.altKey && code === "KeyM") return press(() => (chord.current = { lead: "m", at: Date.now() }));
+    if (!e.shiftKey && !e.altKey && code === "KeyT") return press(() => (chord.current = { lead: "t", at: Date.now() }));
     if (t.kind !== "rich") return;
     if (!e.shiftKey && !e.altKey) {
       if (code === "KeyB") return press(() => runCommand("bold"));

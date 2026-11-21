@@ -40,7 +40,10 @@ export function clozeSurround(n: number): Surround {
   return { prefix: `{{c${n}::`, suffix: "}}" };
 }
 
-export type MathKind = "inline" | "block" | "chemistry";
+export type MathKind = "inline" | "block" | "chemistry" | "latex" | "latexEquation" | "latexMathEnv";
+
+/** The kinds written as MathJax, which the editor shows as chips; the rest are LaTeX tags. */
+export const isMathjaxKind = (kind: MathKind) => kind === "inline" || kind === "block" || kind === "chemistry";
 
 export function mathSurround(kind: MathKind): Surround {
   switch (kind) {
@@ -50,6 +53,12 @@ export function mathSurround(kind: MathKind): Surround {
       return { prefix: "\\[", suffix: "\\]" };
     case "chemistry":
       return { prefix: "\\(\\ce{", suffix: "}\\)" };
+    case "latex":
+      return { prefix: "[latex]", suffix: "[/latex]" };
+    case "latexEquation":
+      return { prefix: "[$]", suffix: "[/$]" };
+    case "latexMathEnv":
+      return { prefix: "[$$]", suffix: "[/$$]" };
   }
 }
 

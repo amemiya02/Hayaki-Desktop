@@ -9,13 +9,17 @@
  * never in answer to its own typing, so the caret, the undo history and IME
  * composition are left alone. Nothing is emitted while a composition is open.
  */
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
 import { cn } from "@/components/ui";
 import { mediaUrl } from "@/lib/study/audio";
 
 import { insertHtml, rememberSelection } from "./dom";
+import { ImageHandle } from "./ImageHandle";
 import { displayToField, fieldToDisplay, normalizeEmpty } from "./media-src";
+import { displayToMath, mathToDisplay } from "./mathjax";
+import { MathjaxPopover } from "./MathjaxPopover";
+import { encodePastedImage, isClipboardBitmap, stripsFormatting, useEditingPrefs } from "./paste";
 import { sanitizeHtml, textToHtml } from "./sanitize";
 
 const MEDIA_PREFIX = mediaUrl("");
@@ -23,8 +27,13 @@ const MEDIA_PREFIX = mediaUrl("");
 /** Set while text dragged from inside the app is in flight; the browser moves it without help. */
 let internalDrag = false;
 
-export const toDisplay = (html: string) => fieldToDisplay(html, mediaUrl);
-export const toStored = (html: string) => normalizeEmpty(displayToField(html, MEDIA_PREFIX));
+/** Raised on a field's element after a MathJax chip is inserted, so its editor opens on it. */
+export const MATH_INSERTED_EVENT = "hayaki-math-inserted";
+
+const MATH_CHIP = '[data-anki="mathjax"]';
+
+export const toDisplay = (html: string) => mathToDisplay(fieldToDisplay(html, mediaUrl));
+export const toStored = (html: string) => normalizeEmpty(displayToField(displayToMath(html), MEDIA_PREFIX));
 
 /** Shared look of field content, so lists, headings and images read as they will on the Card. */
 export const fieldContentClass =
@@ -32,12 +41,23 @@ export const fieldContentClass =
   "[&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_img]:inline [&_img]:max-w-full [&_img]:h-auto [&_img]:max-h-[320px] " +
   "[&_a]:text-accent-ink [&_a]:underline [&_blockquote]:border-s-2 [&_blockquote]:border-line-strong [&_blockquote]:ps-3 " +
   "[&_pre]:font-mono [&_code]:font-mono [&_table]:border-collapse [&_td]:border [&_td]:border-line [&_td]:px-1.5 " +
-  "[&_th]:border [&_th]:border-line [&_th]:px-1.5 [&_hr]:my-2 [&_hr]:border-line";
+  "[&_th]:border [&_th]:border-line [&_th]:px-1.5 [&_hr]:my-2 [&_hr]:border-line " +
+  // An image the person expanded keeps its own size; a MathJax chip is one atom you click to edit.
+  "[&_img[data-editor-shrink=false]]:max-h-none [&_img[data-editor-shrink=false]]:max-w-none " +
+  "[&_[data-anki=mathjax]]:mx-0.5 [&_[data-anki=mathjax]]:cursor-pointer [&_[data-anki=mathjax]]:rounded-[6px] [&_[data-anki=mathjax]]:bg-accent-soft " +
+  "[&_[data-anki=mathjax]]:px-1.5 [&_[data-anki=mathjax]]:font-mono [&_[data-anki=mathjax]]:text-[0.9em] [&_[data-anki=mathjax]]:text-accent-ink " +
+  "[&_[data-anki=mathjax]]:select-none [&_[data-anki=mathjax]:empty]:before:content-['…'] " +
+  "[&_[data-anki=mathjax][data-block=true]]:my-1 [&_[data-anki=mathjax][data-block=true]]:block [&_[data-anki=mathjax][data-block=true]]:w-fit";
 
 function clipboardFragment(html: string): string {
   const start = html.indexOf("<!--StartFragment-->");
   const end = html.indexOf("<!--EndFragment-->");
   return start >= 0 && end > start ? html.slice(start + 20, end) : html;
+}
+
+/** Pasted or dropped HTML, cleaned. MathJax chips copied from a field turn back into text first, then into chips again. */
+function fromClipboardHtml(html: string): string {
+  return mathToDisplay(sanitizeHtml(displayToMath(clipboardFragment(html))));
 }
 
 function mediaFiles(list: FileList | undefined | null): File[] {
@@ -78,9 +98,14 @@ export function RichTextInput({
   /** The stored value the DOM currently represents. */
   const shown = useRef<string | null>(null);
   const composing = useRef(false);
-  const plainPaste = useRef(false);
+  const shiftPaste = useRef(false);
   const handlers = useRef({ onChange, value });
   handlers.current = { onChange, value };
+  const prefs = useEditingPrefs();
+  const latestPrefs = useRef(prefs);
+  latestPrefs.current = prefs;
+  const [chip, setChip] = useState<HTMLElement | null>(null);
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   const markEmpty = (el: HTMLElement) => {
     const empty = el.textContent === "" && !el.querySelector("img,video,audio,hr,table");
@@ -104,14 +129,54 @@ export function RichTextInput({
     if (next !== handlers.current.value) handlers.current.onChange(next);
   };
 
-  const insertFiles = (files: File[]) => {
+  /** Pasted bitmaps are saved as PNG or JPEG as Anki's preference says; other files are stored as they are. */
+  const insertFiles = (files: File[], pasted = false) => {
     const el = element.current;
     if (!el) return;
     rememberSelection(el);
-    void onFiles(files).then((snippets) => {
-      if (snippets.length) insertHtml(el, snippets.join(""));
-    });
+    const prepared = files.map((file) =>
+      pasted && isClipboardBitmap(file) ? encodePastedImage(file, latestPrefs.current.imagesAsPng).catch(() => file) : file,
+    );
+    void Promise.all(prepared)
+      .then(onFiles)
+      .then((snippets) => {
+        if (snippets.length) insertHtml(el, snippets.join(""));
+      });
   };
+
+  const closeChip = () => {
+    const el = element.current;
+    if (chip && el) {
+      if (chip.isConnected && !chip.dataset.mathjax) {
+        chip.remove();
+        emit();
+      }
+      el.focus({ preventScroll: true });
+      if (chip.isConnected) {
+        const range = document.createRange();
+        range.setStartAfter(chip);
+        range.collapse(true);
+        const selection = document.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+    }
+    setChip(null);
+  };
+
+  const openInsertedChip = () => {
+    const inserted = element.current?.querySelector<HTMLElement>("[data-autofocus]");
+    inserted?.removeAttribute("data-autofocus");
+    if (inserted) setChip(inserted);
+  };
+
+  useEffect(() => {
+    const el = element.current;
+    el?.addEventListener(MATH_INSERTED_EVENT, openInsertedChip);
+    return () => el?.removeEventListener(MATH_INSERTED_EVENT, openInsertedChip);
+    // The handler reads only refs and a stable setter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const style: CSSProperties = {
     fontFamily: fontFamily ? `"${fontFamily.replace(/["\\]/g, "")}", var(--font-ui)` : undefined,
@@ -119,10 +184,17 @@ export function RichTextInput({
   };
 
   return (
+    <>
     <div
       ref={(el) => {
         element.current = el;
         elementRef?.(el);
+      }}
+      onClickCapture={(e) => {
+        const target = e.target as HTMLElement;
+        const math = target.closest<HTMLElement>(MATH_CHIP);
+        setChip(math);
+        setImage(!math && target instanceof HTMLImageElement && !target.dataset.anki ? target : null);
       }}
       role="textbox"
       aria-multiline="true"
@@ -143,6 +215,7 @@ export function RichTextInput({
       )}
       onInput={(e) => {
         if ((e.nativeEvent as InputEvent).isComposing) return;
+        setImage(null);
         emit();
       }}
       onCompositionStart={() => {
@@ -159,23 +232,24 @@ export function RichTextInput({
         onBlur?.();
       }}
       onKeyDown={(e) => {
-        plainPaste.current = (e.ctrlKey || e.metaKey) && e.shiftKey && e.code === "KeyV";
+        shiftPaste.current = (e.ctrlKey || e.metaKey) && e.shiftKey && e.code === "KeyV";
       }}
       onPaste={(e) => {
         const data = e.clipboardData;
         const files = mediaFiles(data.files);
         if (files.length) {
           e.preventDefault();
-          insertFiles(files);
+          insertFiles(files, true);
           return;
         }
         const html = data.getData("text/html");
         const text = data.getData("text/plain");
-        const plain = plainPaste.current;
-        plainPaste.current = false;
-        if (html && !plain) {
+        // Shift inverts "paste without Shift key strips formatting".
+        const strip = stripsFormatting(latestPrefs.current.stripsFormatting, shiftPaste.current);
+        shiftPaste.current = false;
+        if (html && !strip) {
           e.preventDefault();
-          insertHtml(e.currentTarget, sanitizeHtml(clipboardFragment(html)));
+          insertHtml(e.currentTarget, fromClipboardHtml(html));
         } else if (text) {
           e.preventDefault();
           insertHtml(e.currentTarget, textToHtml(text));
@@ -204,8 +278,28 @@ export function RichTextInput({
           selection?.addRange(range);
         }
         if (files.length) insertFiles(files);
-        else insertHtml(el, sanitizeHtml(clipboardFragment(html)));
+        else insertHtml(el, fromClipboardHtml(html));
       }}
     />
+    {chip && (
+      <MathjaxPopover
+        chip={chip}
+        onChange={emit}
+        onRemove={() => {
+          chip.remove();
+          emit();
+          closeChip();
+        }}
+        onClose={closeChip}
+      />
+    )}
+    {image && (
+      <ImageHandle
+        image={image}
+        onChange={emit}
+        onClose={() => setImage(null)}
+      />
+    )}
+    </>
   );
 }
