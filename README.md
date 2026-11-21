@@ -1,40 +1,82 @@
-<p align="center"><img src="src-tauri/icons/128x128@2x.png" width="96" height="96" alt="Hayaki's smiling folded-card icon"></p>
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" width="104" height="104" alt="Hayaki icon">
+</p>
 
 <h1 align="center">Hayaki for desktop</h1>
 
-<p align="center"><b>Hayaki = Hayaku + Anki</b></p>
+<p align="center">
+  <b>A calm, fast desktop app for your Anki collection.</b><br>
+  Anki's own engine, a new interface. Windows, macOS and Linux.
+</p>
 
-<p align="center">An offline flashcard app for your Anki collection, on Windows, macOS and Linux.</p>
+<p align="center">
+  <b>English</b> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-<p align="center"><a href="https://github.com/amemiya02/Hayaki">Hayaki for Android</a> · <a href="https://github.com/amemiya02/Hayaki-iOS">Hayaki for iPhone and iPad</a></p>
+<p align="center">
+  <a href="LICENSE"><img alt="License: AGPL-3.0-or-later" src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey">
+  <img alt="Anki engine 26.09.4" src="https://img.shields.io/badge/Anki%20engine-26.09.4-2f6fb2">
+  <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black">
+  <img alt="Rust" src="https://img.shields.io/badge/Rust-1.97-000000?logo=rust&logoColor=white">
+  <a href="https://github.com/amemiya02/Hayaki-Desktop/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/amemiya02/Hayaki-Desktop"></a>
+  <a href="https://github.com/amemiya02/Hayaki-Desktop/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/amemiya02/Hayaki-Desktop?style=flat"></a>
+</p>
 
-Hayaki for desktop rebuilds Anki Desktop's interface from scratch as one calm, coherent desktop app, on top of Anki's own unmodified engine. Your collection, scheduling, review history and sync work exactly as in Anki, so you can move between Anki, AnkiDroid and the other Hayaki editions at any time.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/decks-dark.webp">
+    <img src="docs/screenshots/decks.webp" width="880" alt="The Decks screen: today's due count, a progress bar and the Deck tree with new, learning and due counts">
+  </picture>
+</p>
 
-## What works
+Hayaki rebuilds Anki Desktop's interface from scratch, in one design system, on top of Anki's unmodified Rust engine. Scheduling, search, storage and sync are upstream's own code, so your collection moves freely between Hayaki, Anki, AnkiDroid and the [Android](https://github.com/amemiya02/Hayaki) and [iOS](https://github.com/amemiya02/Hayaki-iOS) editions.
 
-- **Decks.** Today's work at a glance, the Deck tree with new, learning and due counts, create, rename and delete Decks, and a Deck overview.
-- **Study.** Anki's v3 scheduler with FSRS or SM-2, exactly as upstream. Card Templates render untouched, with MathJax, audio, text-to-speech, type-in answers, flags, marks, bury, suspend, delete and undo. Anki's study shortcuts work: Space, 1 to 4, R, `*`, Ctrl+1 to 7, `-`, `=`, `@`, `!`, Ctrl+Z and Esc. Starting a session folds the sidebar away so the Card has the window.
-- **Move your collection.** Import Deck packages (`.apkg`, merged) and collection packages (`.colpkg`, replaced after confirmation and a backup). Export either one.
-- **Sync** with AnkiWeb or a self-hosted Anki sync server, including the full-sync choice and media sync.
-- **Tools.** Check Database, Check Media, Empty Cards and Create Backup, all from the command palette (Ctrl+K).
-- **Make it yours.** System, Light, Dark or Black appearance with any of the ten Hayaki Themes. Separate profiles keep separate collections.
-- English, Simplified Chinese and Japanese are first-class. Anki's own strings come from the engine in every language it translates.
+## Screenshots
 
-- **Browse.** Cards and Notes modes, a virtualized table with sortable, resizable and selectable columns, Anki's sidebar filters and search syntax, and the selected Note's editor beside it. It also covers Change Deck, suspend, bury, flags, marks, tags, Set Due Date, Reset, Reposition, Find and Replace, Delete and Preview, with Anki's shortcuts.
-- **Add and Edit.** Rich-text fields with Anki's formatting and cloze shortcuts, MathJax insertion, pasted and dropped media, sticky fields, a tag editor with autocomplete, duplicate checks and a live Card preview.
-- **Statistics,** rebuilt natively from the engine's numbers: Today, Future Due, Calendar, Reviews, Card Counts, Intervals, Ease or FSRS Stability, Difficulty and Retrievability, Hourly Breakdown, Answer Buttons, Added and True Retention.
-- **Deck Options,** rebuilt natively: presets, daily limits with per-Deck and today-only overrides, every scheduling, display, burying, audio, timer, auto-advance and easy-days option, and FSRS with Optimize and Evaluate.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/study.webp" alt="Studying a Card with the answer shown and the four answer buttons"></td>
+    <td width="50%"><img src="docs/screenshots/browse.webp" alt="Browse: sidebar filters, the Card table and the Note editor"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Study, with Card Templates rendered untouched</sub></td>
+    <td align="center"><sub>Browse, with the editor beside the table</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/stats.webp" alt="Statistics: Today, Future Due and Reviews charts"></td>
+    <td width="50%"><img src="docs/screenshots/settings.webp" alt="Settings: light and dark appearance and ten themes"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Statistics, drawn natively from the engine's numbers</sub></td>
+    <td align="center"><sub>Ten themes, light, dark and true black</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/study-dark.webp" alt="Studying in dark mode"></td>
+    <td width="50%"><img src="docs/screenshots/decks-dark.webp" alt="The Decks screen in dark mode"></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><sub>Dark mode</sub></td>
+  </tr>
+</table>
 
-- **Collection management.** Manage Note Types with fields and options, Card Templates and Styling in a CodeMirror editor with a live preview of a real Note, Change Note Type with field and template mapping, and Card Info with the review log and FSRS forgetting curve.
-- **Filtered Decks and Custom Study**, with Anki's options and live search validation.
-- **Image Occlusion.** A mask editor with rectangles, ellipses, polygons and text, grouping, alignment and undo. The masks round-trip with Anki, and occlusion Cards render during study and preview.
-- **More ways in and out.** CSV and text import with field mapping, import options for Deck packages with a full import log, and export of Notes or Cards as plain text.
-- **Everything else.** Audio recording in the editor, the FSRS simulator and workload helper, Anki's own preferences (scheduling, review, editing, browsing, backups), a profile chooser, a collapsible and resizable sidebar, a keyboard shortcuts sheet (?) and the Ctrl+K command palette.
-- **Native feel.** Windows 11 Mica and macOS vibrancy behind the sidebar, an opaque fallback elsewhere, and short motion that respects reduced-motion settings.
+## Features
 
-## Build
+- **Study** with the v3 scheduler, FSRS or SM-2, exactly as upstream. Audio, text-to-speech, type-in answers, MathJax, timers, auto advance, flags, marks, bury, suspend, set due, undo and redo, with Anki's shortcuts.
+- **Browse** large collections in a virtualized table with Anki's search syntax, sidebar filters, Find and Replace, Find Duplicates, Grade Now and bulk actions.
+- **Add and edit** in a rich-text editor with cloze shortcuts, MathJax preview, image resizing, media paste and drop, recording, sticky fields and tag autocomplete.
+- **Deck Options and Statistics**, rebuilt natively, including FSRS optimize, evaluate and the simulator.
+- **Collection tools:** Note Types and Card Templates with a live preview, Change Note Type, Filtered Decks, Custom Study, Image Occlusion, CSV, `.apkg` and `.colpkg` import and export, Check Database, Check Media and Empty Cards.
+- **Sync** with AnkiWeb or a self-hosted server, automatically on open and close, with media progress and a media log.
+- **Automatic backups** and restore from any backup.
+- **AnkiConnect, built in.** Turn it on in Settings, and Yomitan, browser extensions and scripts can add notes. Only programs on your computer can connect, and web pages must be allowed one by one.
+- **Feels native.** Mica on Windows 11, vibrancy on macOS, ⌘ shortcuts on the Mac, zoom, full screen, a command palette (Ctrl+K / ⌘K) and a shortcuts sheet (`?`).
+- **English, Simplified Chinese and Japanese** throughout, and every language Anki itself translates.
 
-You need [rustup](https://rustup.rs) (the pinned Rust 1.97.1 installs itself), Node.js 22 or later, the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform, and `protoc` 3.15 or later. On Windows you can unpack a [protobuf release](https://github.com/protocolbuffers/protobuf/releases) into `.tools/protoc/`.
+## Build from source
+
+You need [rustup](https://rustup.rs) (the pinned Rust toolchain installs itself), Node.js 22+, the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform and `protoc` 3.15+.
 
 ```sh
 git clone --recurse-submodules https://github.com/amemiya02/Hayaki-Desktop.git
@@ -42,32 +84,38 @@ cd Hayaki-Desktop
 git -C vendor/anki submodule update --init --depth 1 ftl/core-repo ftl/qt-repo
 npm install
 
-# Name Hayaki's build in the sync requests the core sends (upstream reads out/buildhash)
+# Name Hayaki's build in the sync requests the core sends
 mkdir -p vendor/anki/out && printf 'hayaki-%s' "$(git -C vendor/anki rev-parse --short=8 HEAD)" > vendor/anki/out/buildhash
 
-# Point the core's build at protoc and a stable descriptor path
 export PROTOC=/path/to/protoc
 export DESCRIPTORS_BIN="$PWD/build/core/descriptors.bin"
 
-(cd src-tauri && cargo build)   # first build compiles Anki's core; it takes a while
-npm run core:gen                # generates the typed TypeScript calls from the core
-npm run app                     # starts Hayaki in development mode
+(cd src-tauri && cargo build)   # the first build compiles Anki's core and takes a while
+npm run core:gen                # typed TypeScript calls for every core method
+npm run app                     # run in development mode
 ```
 
-`npm run app:build` produces installers in `src-tauri/target/release/bundle/`.
+`npm run app:build` writes installers to `src-tauri/target/release/bundle/`. Run the tests with `npm test`, `npm run typecheck` and `cargo test --lib` in `src-tauri`.
 
-Tests: `cargo test --lib` in `src-tauri` (it drives the real core against a throwaway collection), `npm test`, and `npm run typecheck`.
+## How it works
 
-## How it is built
+```
+React 19 interface ──► one Tauri command ──► Anki's Rust engine (vendor/anki, unmodified)
+        ▲                  (protobuf)                     │
+        └──── typed calls generated from the engine's descriptors
+```
 
-- `vendor/anki` is upstream Anki at the tag `26.09.4`, unmodified, linked into the Tauri app as Rust path dependencies.
-- `src-tauri/src/core.rs` is the whole bridge: one binary command that runs a core method by its service and method numbers and returns the encoded reply. Panics come back as errors.
-- `src-tauri/codegen` reads the core's descriptor set and writes `src/lib/anki/generated/core.ts`, a typed function for every core method. The numbers come from upstream's own helper, so they always match the built library.
-- Card Content renders in a page served from a separate origin (`http://media.localhost`), so scripts in Card Templates can never reach the core or the interface.
-- The interface is React 19, TypeScript, Tailwind CSS 4 and Radix, with TanStack Query and Virtual.
+- [`vendor/anki`](vendor/anki) is upstream Anki at `26.09.4`, linked as Rust path dependencies.
+- [`src-tauri/src/core.rs`](src-tauri/src/core.rs) is the whole bridge: it runs a core method by number and returns the encoded reply.
+- Card Content renders on a separate origin, so scripts in Card Templates can never reach the engine or the interface.
+- The interface uses React 19, TypeScript, Tailwind CSS 4, Radix and TanStack Query.
 
-Decisions are recorded in [`docs/adr/`](docs/adr/), product rules in [PRODUCT.md](PRODUCT.md).
+Design decisions live in [`docs/adr/`](docs/adr/) and product rules in [PRODUCT.md](PRODUCT.md).
+
+## Contributing
+
+Bug reports and ideas are welcome in [Issues](https://github.com/amemiya02/Hayaki-Desktop/issues). Please include your platform and the steps that show the problem.
 
 ## License
 
-Hayaki for desktop is licensed under AGPL-3.0-or-later. It embeds Anki (© Ankitects Pty Ltd and contributors, AGPL-3.0-or-later) and MathJax (Apache-2.0). Hayaki is an independent project and is not affiliated with Ankitects.
+[AGPL-3.0-or-later](LICENSE). Hayaki embeds Anki (© Ankitects Pty Ltd and contributors, AGPL-3.0-or-later) and MathJax (Apache-2.0). Hayaki is an independent project, not affiliated with Ankitects.
