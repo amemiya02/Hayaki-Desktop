@@ -2,16 +2,17 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 /** `?` or F1: every shortcut, per screen, with a filter. */
-import { Search, X } from "lucide-react";
+import { BookOpen, Search, X } from "lucide-react";
 import { Dialog as RadixDialog } from "radix-ui";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { create } from "zustand";
 
-import { IconButton, Kbd, scrimClass } from "@/components/ui";
+import { Button, IconButton, Kbd, scrimClass } from "@/components/ui";
 import { t } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { ts } from "@/lib/strings/shell";
 
+import { openManual } from "./help";
 import { filterSections, resolveSections, splitChord, type ResolvedSection } from "./shortcuts";
 
 export const useShortcutsSheet = create<{ open: boolean; toggle(): void; show(): void; hide(): void }>((set) => ({
@@ -140,6 +141,12 @@ export function ShortcutsSheet() {
                 ))}
               </div>
             )}
+          </div>
+          <div className="flex shrink-0 justify-end border-t border-line px-5 py-2.5">
+            <Button size="sm" variant="ghost" onClick={() => void openManual()}>
+              <BookOpen />
+              {ts("manual")}
+            </Button>
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

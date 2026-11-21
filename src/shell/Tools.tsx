@@ -8,6 +8,7 @@ import { create } from "zustand";
 import { toast } from "sonner";
 
 import { Button, Dialog, Spinner } from "@/components/ui";
+import { confirm } from "@/components/confirm";
 import * as core from "@/lib/anki/generated/core";
 import type { CheckMediaResponse } from "@/lib/anki/proto/anki/media_pb";
 import type { EmptyCardsReport } from "@/lib/anki/proto/anki/card_rendering_pb";
@@ -78,7 +79,20 @@ function Pre({ text }: { text: string }) {
 export function ToolsHost() {
   const report = useTools((s) => s.report);
   const [keepNotes, setKeepNotes] = useState(true);
+  const [working, setWorking] = useState(false);
   const close = () => useTools.setState({ report: null });
+  /** Runs one of the Check Media actions; the dialog closes after it unless it keeps the report. */
+  const run = async (action: () => Promise<void>, closeAfter = true) => {
+    setWorking(true);
+    try {
+      await action();
+      if (closeAfter) close();
+    } catch (error) {
+      toast.error(errorText(error));
+    } finally {
+      setWorking(false);
+    }
+  };
 
   if (!report) return null;
 
@@ -107,10 +121,25 @@ export function ToolsHost() {
     const result = report.result;
     const deleteUnused = async () => {
       if (!result) return;
-      await core.trashMediaFiles({ fnames: result.unused });
-      toast.success(tr("media-check-unused-count", { count: result.unused.length }));
-      close();
+      const ok = await confirm({
+        title: tr("media-check-delete-unused"),
+        message: tr("media-check-delete-unused-confirm"),
+        confirm: tr("media-check-delete-unused"),
+        danger: true,
+      });
+      if (!ok) return;
+      await run(async () => {
+        await core.trashMediaFiles({ fnames: result.unused });
+        toast.success(tr("media-check-delete-unused-complete", { count: result.unused.length }));
+      });
     };
+    // Notes that reference a file the media folder lacks get the `missing-media` tag, as upstream.
+    const tagMissing = () =>
+      run(async () => {
+        await core.addNoteTags({ noteIds: result?.missingMediaNotes ?? [], tags: tr("media-check-missing-media-tag") });
+        toast.success(tr("media-check-add-tag"));
+      }, false);
+    const hasMissing = (result?.missing.length ?? 0) > 0;
     return (
       <Dialog
         open
@@ -120,11 +149,41 @@ export function ToolsHost() {
         footer={
           <>
             {result && result.unused.length > 0 && (
-              <Button variant="danger" onClick={() => void deleteUnused()}>
+              <Button variant="danger" disabled={working} onClick={() => void deleteUnused()}>
                 {tr("media-check-delete-unused")}
               </Button>
             )}
-            {result?.haveTrash && <Button onClick={() => void core.emptyTrash().then(close)}>{tr("media-check-empty-trash")}</Button>}
+            {hasMissing && (
+              <Button disabled={working} onClick={() => void tagMissing()}>
+                {tr("media-check-add-tag")}
+              </Button>
+            )}
+            {result?.haveTrash && (
+              <>
+                <Button
+                  disabled={working}
+                  onClick={() =>
+                    void run(async () => {
+                      await core.emptyTrash();
+                      toast.success(tr("media-check-trash-emptied"));
+                    })
+                  }
+                >
+                  {tr("media-check-empty-trash")}
+                </Button>
+                <Button
+                  disabled={working}
+                  onClick={() =>
+                    void run(async () => {
+                      await core.restoreTrash();
+                      toast.success(tr("media-check-trash-restored"));
+                    })
+                  }
+                >
+                  {tr("media-check-restore-trash")}
+                </Button>
+              </>
+            )}
             <Button variant="primary" onClick={close}>{t("common.close")}</Button>
           </>
         }

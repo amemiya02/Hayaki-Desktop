@@ -16,6 +16,11 @@ import {
   ImagePlus,
   Info,
   Keyboard,
+  BookOpen,
+  Maximize,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
   Layers,
   PanelLeft,
   Moon,
@@ -35,7 +40,6 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Kbd } from "@/components/ui";
-import * as core from "@/lib/anki/generated/core";
 import { firstLanguage, t, tr, trLabel } from "@/lib/i18n";
 import { importPackage } from "@/lib/import";
 import { useNav } from "@/lib/nav";
@@ -51,6 +55,11 @@ import { useDeckTree } from "@/lib/queries";
 import { themeNames, themeOrder } from "@/lib/themes";
 import type { DeckTreeNode } from "@/lib/anki/proto/anki/decks_pb";
 
+import { openManual } from "./help";
+import { openStudyDeck } from "./StudyDeck";
+import { redoLabel, runRedo, runUndo, undoLabel, useUndoStatus } from "./undo";
+import { toggleFullscreen } from "./WindowHost";
+import { zoom } from "./zoom";
 import { useExport } from "./ExportDialog";
 import { GLOBAL_KEYS, splitChord } from "./shortcuts";
 import { useShortcutsSheet } from "./ShortcutsSheet";
@@ -106,6 +115,7 @@ export function CommandPalette({ onSync }: { onSync: () => void }) {
   const { data: tree } = useDeckTree();
   const prefs = usePrefs();
   const showExport = useExport((s) => s.show);
+  const { data: undoStatus } = useUndoStatus(open);
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
@@ -173,7 +183,14 @@ export function CommandPalette({ onSync }: { onSync: () => void }) {
                 <Item icon={<RefreshCw />} label={tr("qt-misc-sync")} keys={GLOBAL_KEYS.sync} onSelect={run(onSync)} />
                 <Item icon={<Download />} label={t("decks.import")} keys={GLOBAL_KEYS.import} onSelect={run(() => importPackage())} />
                 <Item icon={<Upload />} label={trLabel("exporting-export")} keys={GLOBAL_KEYS.export} onSelect={run(() => showExport())} />
-                <Item icon={<Undo2 />} label={tr("undo-undo")} keys={GLOBAL_KEYS.undo} onSelect={run(() => core.undo())} />
+                {/* Named after the step, as Anki's Edit menu is; each shows only when it can run. */}
+                {(!undoStatus || undoStatus.undo !== "") && (
+                  <Item icon={<Undo2 />} label={undoLabel(undoStatus)} value={`undo ${undoLabel(undoStatus)}`} keys={GLOBAL_KEYS.undo} onSelect={run(runUndo)} />
+                )}
+                {undoStatus && undoStatus.redo !== "" && (
+                  <Item icon={<Redo2 />} label={redoLabel(undoStatus)} value={`redo ${redoLabel(undoStatus)}`} keys={GLOBAL_KEYS.redo} onSelect={run(runRedo)} />
+                )}
+                <Item icon={<Play />} label={trLabel("qt-misc-study-deck")} keys={GLOBAL_KEYS.studyDeck} onSelect={run(openStudyDeck)} />
                 {infoCard !== null && (
                   <Item icon={<Info />} label={tr("actions-card-info")} keys={route === "study" ? GLOBAL_KEYS.cardInfoStudy : [SHORTCUTS.cardInfo!]} onSelect={run(() => openCardInfo(infoCard))} />
                 )}
@@ -182,6 +199,11 @@ export function CommandPalette({ onSync }: { onSync: () => void }) {
                 <Item icon={<Users />} label={trLabel("qt-accel-switch-profile")} keys={GLOBAL_KEYS.switchProfile} onSelect={run(() => useApp.getState().switchProfile())} />
                 <Item icon={<PanelLeft />} label={usePrefs.getState().sidebarCollapsed ? ts("showSidebar") : ts("hideSidebar")} keys={GLOBAL_KEYS.sidebar} onSelect={run(() => usePrefs.getState().toggleSidebar())} />
                 <Item icon={<Keyboard />} label={ts("shortcuts")} keys={GLOBAL_KEYS.shortcuts} onSelect={run(() => useShortcutsSheet.getState().show())} />
+                <Item icon={<BookOpen />} label={`${trLabel("qt-accel-guide")}: ${ts("manual")}`} onSelect={run(openManual)} />
+                <Item icon={<Maximize />} label={trLabel("qt-accel-full-screen")} keys={GLOBAL_KEYS.fullscreen} onSelect={run(toggleFullscreen)} />
+                <Item icon={<ZoomIn />} label={trLabel("qt-accel-zoom-in")} keys={GLOBAL_KEYS.zoomIn} onSelect={run(() => zoom("in"))} />
+                <Item icon={<ZoomOut />} label={trLabel("qt-accel-zoom-out")} keys={GLOBAL_KEYS.zoomOut} onSelect={run(() => zoom("out"))} />
+                <Item icon={<ZoomIn />} label={trLabel("qt-accel-reset-zoom")} keys={GLOBAL_KEYS.zoomReset} onSelect={run(() => zoom("reset"))} />
               </Group>
               {decks.length > 0 && (
                 <Group heading={tr("decks-study")}>

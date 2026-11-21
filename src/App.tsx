@@ -28,6 +28,7 @@ import { isWebViewAccelerator } from "@/shell/accelerators";
 import { ShortcutsSheet } from "@/shell/ShortcutsSheet";
 import { LifecycleHost } from "@/shell/Lifecycle";
 import { ToolsHost } from "@/shell/Tools";
+import { WindowHost } from "@/shell/WindowHost";
 import { ConfirmHost } from "@/components/confirm";
 import { CardInfoHost } from "@/screens/card-info";
 import { FilteredHost } from "@/screens/filtered";
@@ -89,7 +90,8 @@ function Toolbar() {
 
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
-      if ((e.key === "/" || ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "f")) && !isTyping(e.target)) {
+      // `/` is Anki's Study Deck (see WindowHost); search keeps Ctrl+F.
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !(e.ctrlKey && e.metaKey) && e.key.toLowerCase() === "f" && !isTyping(e.target)) {
         if (document.querySelector("[role=dialog]")) return;
         e.preventDefault();
         search.current?.focus();
@@ -125,7 +127,7 @@ function Toolbar() {
           aria-label={tr("actions-search")}
           className="border-transparent bg-surface-2 ps-8 pe-8 hover:border-line"
         />
-        <Kbd className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2">/</Kbd>
+        <Kbd className="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2">Ctrl F</Kbd>
       </form>
       <Button onClick={() => void importPackage()} title={`${t("decks.import")} (Ctrl+Shift+I)`}>
         <Download />
@@ -432,6 +434,7 @@ export function App() {
         <ConfirmHost />
         <LifecycleHost />
         <ShortcutsSheet />
+        <WindowHost />
         <AppToaster />
       </TooltipProvider>
     </MotionConfig>

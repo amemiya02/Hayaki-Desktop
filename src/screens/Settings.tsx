@@ -17,6 +17,7 @@ import { useResolvedAppearance } from "@/lib/useAppearance";
 import { AnkiPreferencesSections } from "@/screens/preferences";
 import { BackupsSection } from "@/shell/Backups";
 import { SyncPreferencesSection } from "@/shell/Sync";
+import { WindowSettings } from "@/shell/WindowSettings";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -114,6 +115,8 @@ export function SettingsScreen() {
             </div>
           </div>
         </Section>
+
+        <WindowSettings />
 
         <Section title={t("settings.study")}>
           <Row label={t("settings.autoplay")} hint={t("settings.autoplayHint")}>

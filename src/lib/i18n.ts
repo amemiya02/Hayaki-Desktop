@@ -10,6 +10,7 @@
 import { FluentBundle, FluentResource, type FluentVariable } from "@fluent/bundle";
 
 import { i18nResources } from "./anki/generated/core";
+import { applyStoredLanguage } from "./language";
 import { hayakiStrings, type HayakiKey } from "./strings";
 
 let bundles: FluentBundle[] = [];
@@ -17,6 +18,8 @@ let langs: string[] = ["en-US"];
 let hayakiLang: "en" | "zh" | "ja" = "en";
 
 export async function setupI18n(): Promise<void> {
+  // A language chosen in Settings restarts the core in it before its strings are read.
+  await applyStoredLanguage();
   const resources = await i18nResources({ modules: [] });
   const json = JSON.parse(new TextDecoder().decode(resources.json)) as {
     resources: string[];

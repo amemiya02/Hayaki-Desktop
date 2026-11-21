@@ -34,6 +34,8 @@ import { Rating, useSession } from "@/lib/study/session";
 import { isImageOcclusion } from "@/components/editor/markup";
 import { openCardInfo } from "@/screens/card-info";
 
+import { handleWindowChord } from "@/shell/WindowHost";
+
 import { Finished } from "./Finished";
 
 const answers = [
@@ -194,6 +196,8 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
 
   const handleKey = useCallback(
     (e: ForwardedKey | KeyboardEvent): boolean => {
+      // Full screen, zoom and redo, which keys from the Card page would otherwise never reach.
+      if (handleWindowChord(e, "target" in e ? e.target : null)) return true;
       const st = useSession.getState();
       const mod = e.ctrlKey || e.metaKey;
       if (e.key === "Escape") {
