@@ -19,6 +19,7 @@ export function splitChord(chord: string): string[] {
 const MAC_GLYPH: Record<string, string> = { Ctrl: "\u2318", Cmd: "\u2318", Shift: "\u21E7", Alt: "\u2325", Control: "\u2303" };
 /** Apple's modifier order: Control, Option, Shift, Command. */
 const MAC_MOD_ORDER = ["Control", "Alt", "Shift", "Cmd"];
+const MAC_KEY: Record<string, string> = { Up: "\u2191", Down: "\u2193", Left: "\u2190", Right: "\u2192" };
 
 /**
  * The keys of a chord as this platform writes them. Chords are written with
@@ -32,7 +33,7 @@ export function displayKeys(chord: string, mac: boolean = isMacPlatform()): stri
   const norm = keys.map((k) => (k === "Ctrl" ? (hasCmd ? "Control" : "Cmd") : k));
   const mods = MAC_MOD_ORDER.filter((m) => norm.includes(m));
   const rest = norm.filter((k) => !MAC_MOD_ORDER.includes(k));
-  return [...mods.map((m) => MAC_GLYPH[m]), ...rest];
+  return [...mods.map((m) => MAC_GLYPH[m]), ...rest.map((k) => MAC_KEY[k] ?? k)];
 }
 
 /** A chord as this platform writes it: `Ctrl+Shift+I` is `\u21E7\u2318I` on macOS. */

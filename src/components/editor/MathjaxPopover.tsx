@@ -14,6 +14,7 @@ import { useMemo, useState } from "react";
 import { CardFrame, type CardFrameContent } from "@/components/CardFrame";
 import { Button, fieldClass, IconButton, Segmented } from "@/components/ui";
 import { direction, firstLanguage, tr } from "@/lib/i18n";
+import { displayChord } from "@/lib/chord";
 import { cardFrameVars, usePrefs } from "@/lib/prefs";
 import { te } from "@/lib/strings/editor";
 import { useResolvedAppearance } from "@/lib/useAppearance";
@@ -82,7 +83,7 @@ export function MathjaxPopover({ chip, onChange, onRemove, onClose }: MathjaxPop
           <textarea
             value={source}
             aria-label={te("mathSource")}
-            placeholder={tr("editing-mathjax-placeholder", { accept: "Enter", newline: "Shift+Enter" })}
+            placeholder={tr("editing-mathjax-placeholder", { accept: "Enter", newline: displayChord("Shift+Enter") })}
             spellCheck={false}
             rows={3}
             dir="ltr"

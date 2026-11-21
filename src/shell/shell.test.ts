@@ -163,6 +163,8 @@ describe("displayKeys", () => {
     expect(displayKeys("Ctrl+Alt+Shift+C", true)).toEqual(["\u2325", "\u21E7", "\u2318", "C"]);
     expect(displayKeys("Ctrl+Cmd+F", true)).toEqual(["\u2303", "\u2318", "F"]);
     expect(displayKeys("Space", true)).toEqual(["Space"]);
+    expect(displayKeys("Alt+Up", true)).toEqual(["\u2325", "\u2191"]);
+    expect(displayKeys("Alt+Up", false)).toEqual(["Alt", "Up"]);
   });
 
   it("leaves chords alone on other platforms", () => {
