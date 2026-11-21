@@ -39,7 +39,7 @@ describe("the sync store across profiles", () => {
 
   it("loads the open profile's account, preferences and restore state", async () => {
     profile(Promise.resolve(alice), true);
-    await useSync.getState().load();
+    await useSync.getState().load("a");
     const s = useSync.getState();
     expect(s.account).toEqual(alice);
     expect(s.prefs.autoSync).toBe(false);
@@ -49,11 +49,11 @@ describe("the sync store across profiles", () => {
 
   it("forgets the previous profile's account as soon as another loads", async () => {
     profile(Promise.resolve(alice));
-    await useSync.getState().load();
+    await useSync.getState().load("a");
 
     const pending = deferred<SyncAccount | null>();
     profile(pending.promise);
-    const loading = useSync.getState().load();
+    const loading = useSync.getState().load("b");
     expect(useSync.getState().account).toBeNull();
     expect(useSync.getState().loaded).toBe(false);
 
@@ -65,9 +65,9 @@ describe("the sync store across profiles", () => {
   it("drops a load that finishes after the profile changed again", async () => {
     const first = deferred<SyncAccount | null>();
     profile(first.promise);
-    const stale = useSync.getState().load();
+    const stale = useSync.getState().load("a");
     profile(Promise.resolve(bob));
-    await useSync.getState().load();
+    await useSync.getState().load("b");
 
     first.resolve(alice);
     await stale;
@@ -76,8 +76,19 @@ describe("the sync store across profiles", () => {
 
   it("forgets the account when the profile closes", async () => {
     profile(Promise.resolve(alice));
-    await useSync.getState().load();
+    await useSync.getState().load("a");
     useSync.getState().unload();
     expect(useSync.getState().account).toBeNull();
+  });
+
+  it("writes the account to the profile it was loaded for", async () => {
+    profile(Promise.resolve(alice));
+    await useSync.getState().load("a");
+    const fallback = invoke.getMockImplementation()!;
+    invoke.mockImplementation((command: string, args: unknown) =>
+      command === "sync_account_set" ? Promise.resolve() : fallback(command, args),
+    );
+    await useSync.getState().signOut();
+    expect(invoke).toHaveBeenCalledWith("sync_account_set", { profile: "a", account: null });
   });
 });

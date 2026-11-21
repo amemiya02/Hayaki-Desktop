@@ -99,7 +99,7 @@ pub fn encoded_error(kind: Kind, message: String) -> Vec<u8> {
     .encode_to_vec()
 }
 
-fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+pub(crate) fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
     let detail = if let Some(text) = payload.downcast_ref::<&str>() {
         (*text).to_string()
     } else if let Some(text) = payload.downcast_ref::<String>() {

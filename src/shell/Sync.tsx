@@ -125,7 +125,7 @@ export function useSyncAction() {
       return;
     }
     let current = true;
-    load()
+    load(profileId)
       .then(() => {
         if (current && autoSyncDue()) void runRef.current();
       })

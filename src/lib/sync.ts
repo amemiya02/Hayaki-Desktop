@@ -42,6 +42,8 @@ type Phase = "idle" | "syncing" | "media";
 
 interface SyncState {
   phase: Phase;
+  /** The profile whose account and preferences are loaded; the shell refuses writes for any other. */
+  profile: string | null;
   account: SyncAccount | null;
   prefs: SyncPrefs;
   loaded: boolean;
@@ -53,9 +55,9 @@ interface SyncState {
   logOpen: boolean;
   lastError: string | null;
   lastSynced: number | null;
-  /** Forgets the account and preferences at once, then loads the open profile's. */
-  load(): Promise<void>;
-  /** Forgets the account and preferences: no profile is open. */
+  /** Forgets the account and preferences at once, then loads `profile`'s, the open profile. */
+  load(profile: string): Promise<void>;
+  /** Forgets the account and preferences: no profile is open, or another one is opening. */
   unload(): void;
   setPrefs(prefs: Partial<SyncPrefs>): Promise<void>;
   showLog(open: boolean): void;
@@ -67,14 +69,21 @@ interface SyncState {
   abortMedia(): void;
 }
 
-const getAccount = () => invoke<SyncAccount | null>("sync_account_get");
-const setAccount = (account: SyncAccount | null) => invoke<void>("sync_account_set", { account });
-const getPrefs = () => invoke<SyncPrefs>("sync_prefs_get");
-const savePrefs = (prefs: SyncPrefs) => invoke<void>("sync_prefs_set", { prefs });
+const getAccount = (profile: string) => invoke<SyncAccount | null>("sync_account_get", { profile });
+const getPrefs = (profile: string) => invoke<SyncPrefs>("sync_prefs_get", { profile });
 const getRestored = () => invoke<boolean>("backup_restored");
 
 /** Nothing known about a profile: not signed in, and no syncing on open or close. */
-const UNLOADED = { account: null, prefs: DEFAULT_PREFS, loaded: false, restored: false, log: [], lastError: null, lastSynced: null };
+const UNLOADED = {
+  profile: null,
+  account: null,
+  prefs: DEFAULT_PREFS,
+  loaded: false,
+  restored: false,
+  log: [],
+  lastError: null,
+  lastSynced: null,
+};
 
 function auth(account: SyncAccount) {
   return { hkey: account.hkey, endpoint: account.currentEndpoint ?? account.endpoint ?? undefined };
@@ -98,6 +107,11 @@ export const useSync = create<SyncState>((set, get) => {
   let poller: ReturnType<typeof setInterval> | null = null;
   /** Bumped whenever the profile changes, so a load for an earlier profile is dropped. */
   let generation = 0;
+
+  /** Written to the loaded profile only; the shell refuses it once another profile is open. */
+  function setAccount(account: SyncAccount | null) {
+    return invoke<void>("sync_account_set", { profile: get().profile, account });
+  }
 
   function startPolling() {
     stopPolling();
@@ -166,6 +180,7 @@ export const useSync = create<SyncState>((set, get) => {
 
   return {
     phase: "idle",
+    profile: null,
     account: null,
     prefs: DEFAULT_PREFS,
     loaded: false,
@@ -176,15 +191,15 @@ export const useSync = create<SyncState>((set, get) => {
     lastError: null,
     lastSynced: null,
 
-    async load() {
+    async load(profile) {
       const mine = ++generation;
       set(UNLOADED);
       const [account, prefs, restored] = await Promise.all([
-        getAccount(),
-        getPrefs().catch(() => DEFAULT_PREFS),
+        getAccount(profile),
+        getPrefs(profile).catch(() => DEFAULT_PREFS),
         getRestored(),
       ]);
-      if (mine === generation) set({ account, prefs, restored, loaded: true });
+      if (mine === generation) set({ profile, account, prefs, restored, loaded: true });
     },
 
     unload() {
@@ -195,7 +210,7 @@ export const useSync = create<SyncState>((set, get) => {
     async setPrefs(change) {
       const prefs = { ...get().prefs, ...change };
       set({ prefs });
-      await savePrefs(prefs);
+      await invoke<void>("sync_prefs_set", { profile: get().profile, prefs });
     },
 
     showLog(open) {

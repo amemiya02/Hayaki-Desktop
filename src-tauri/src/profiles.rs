@@ -6,9 +6,11 @@
 //! `collection.media`, its database `collection.media.db2` and `backups`.
 
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
@@ -125,6 +127,11 @@ impl Held<'_> {
         self.session.restored.store(true, Ordering::SeqCst);
     }
 
+    /// The restored profile is no longer loaded: backups and syncs come back.
+    fn end_restore(&self) {
+        self.session.restored.store(false, Ordering::SeqCst);
+    }
+
     /// Closes the open collection, if any. Safe to call more than once.
     pub fn close(&self, core: &Core, on_close: OnClose) {
         let Some(profile) = self.current() else {
@@ -147,6 +154,16 @@ impl Held<'_> {
         }
         // Only now, so the profile cannot be deleted while it closes.
         self.set(None);
+    }
+
+    /// Opens the open profile's collection again after the core closed it. If
+    /// that fails, no profile is open any more.
+    fn reopen(&self, core: &Core, profile: &OpenProfile) -> Result<(), String> {
+        let reopened = core.backend().open_collection(open_request(profile));
+        if reopened.is_err() {
+            self.set(None);
+        }
+        reopened.map_err(|err| err.to_string())
     }
 
     /// Opens `profile`'s collection; nothing may be open.
@@ -177,18 +194,44 @@ fn read_file(root: &Path) -> ProfilesFile {
         .unwrap_or_default()
 }
 
-/// Writes `value` as JSON to `path` through a temporary file, so a crash
-/// leaves either the old file or the new one, never a torn one.
+/// Writes `value` as JSON to `path` through a temporary file of its own,
+/// flushed to disk before it is renamed into place, so a crash or power loss
+/// leaves either the old file or the new one, and writers at the same time
+/// never share a temporary file.
 fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
     let json = serde_json::to_vec_pretty(value).map_err(|err| err.to_string())?;
     let mut tmp = path.as_os_str().to_owned();
-    tmp.push(".tmp");
-    fs::write(&tmp, json).map_err(|err| err.to_string())?;
-    fs::rename(&tmp, path).map_err(|err| err.to_string())
+    tmp.push(format!(".{}-{}.tmp", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+    let tmp = PathBuf::from(tmp);
+    let written = fs::File::create(&tmp)
+        .and_then(|mut file| {
+            file.write_all(&json)?;
+            file.sync_all()
+        })
+        .and_then(|()| fs::rename(&tmp, path));
+    if let Err(err) = written {
+        let _ = fs::remove_file(&tmp);
+        return Err(err.to_string());
+    }
+    // The rename itself is durable once the folder is flushed. Folders cannot
+    // be opened as files on Windows, so this is best effort.
+    if let Some(dir) = path.parent() {
+        let _ = fs::File::open(dir).and_then(|dir| dir.sync_all());
+    }
+    Ok(())
 }
 
-fn write_file(root: &Path, file: &ProfilesFile) -> Result<(), String> {
-    write_json(&root.join("profiles.json"), file)
+/// Reads `profiles.json`, applies `change` and writes it back, all under one
+/// lock, so two changes at once (the window opening a profile twice, or
+/// creating one while another opens) cannot undo each other.
+fn update_file<T>(root: &Path, change: impl FnOnce(&mut ProfilesFile) -> Result<T, String>) -> Result<T, String> {
+    static LOCK: Mutex<()> = Mutex::new(());
+    let _guard = LOCK.lock().unwrap_or_else(|poison| poison.into_inner());
+    let mut file = read_file(root);
+    let value = change(&mut file)?;
+    write_json(&root.join("profiles.json"), &file)?;
+    Ok(value)
 }
 
 fn now_secs() -> i64 {
@@ -255,33 +298,37 @@ pub fn profiles_list(app: AppHandle, session: State<'_, Session>) -> Result<Prof
 
 #[tauri::command]
 pub fn profile_create(app: AppHandle, name: String) -> Result<ProfileMeta, String> {
-    let root = data_root(&app)?;
-    let mut file = read_file(&root);
-    let name = validate_name(&name, &file.profiles, None)?;
-    let id = folder_id(&name, &file.profiles, &root);
-    fs::create_dir_all(root.join("profiles").join(&id)).map_err(|err| err.to_string())?;
-    let meta = ProfileMeta {
-        id,
-        name,
-        created: now_secs(),
-    };
-    file.profiles.push(meta.clone());
-    write_file(&root, &file)?;
-    Ok(meta)
+    create_profile(&data_root(&app)?, &name)
+}
+
+fn create_profile(root: &Path, name: &str) -> Result<ProfileMeta, String> {
+    update_file(root, |file| {
+        let name = validate_name(name, &file.profiles, None)?;
+        let id = folder_id(&name, &file.profiles, root);
+        fs::create_dir_all(root.join("profiles").join(&id)).map_err(|err| err.to_string())?;
+        let meta = ProfileMeta {
+            id,
+            name,
+            created: now_secs(),
+        };
+        file.profiles.push(meta.clone());
+        Ok(meta)
+    })
 }
 
 #[tauri::command]
 pub fn profile_rename(app: AppHandle, session: State<'_, Session>, id: String, name: String) -> Result<ProfilesState, String> {
     let root = data_root(&app)?;
-    let mut file = read_file(&root);
-    let name = validate_name(&name, &file.profiles, Some(&id))?;
-    let profile = file
-        .profiles
-        .iter_mut()
-        .find(|p| p.id == id)
-        .ok_or("not-found")?;
-    profile.name = name.clone();
-    write_file(&root, &file)?;
+    let name = update_file(&root, |file| {
+        let name = validate_name(&name, &file.profiles, Some(&id))?;
+        let profile = file
+            .profiles
+            .iter_mut()
+            .find(|p| p.id == id)
+            .ok_or("not-found")?;
+        profile.name = name.clone();
+        Ok(name)
+    })?;
     if let Some(current) = session.current.write().unwrap().as_mut() {
         if current.id == id {
             current.name = name;
@@ -308,12 +355,13 @@ pub async fn profile_delete(app: AppHandle, id: String) -> Result<ProfilesState,
 
 fn delete_profile(app: &AppHandle, id: &str) -> Result<(), String> {
     let root = data_root(app)?;
-    let mut file = read_file(&root);
-    file.profiles.retain(|p| p.id != id);
-    if file.last_opened.as_deref() == Some(id) {
-        file.last_opened = None;
-    }
-    write_file(&root, &file)?;
+    update_file(&root, |file| {
+        file.profiles.retain(|p| p.id != id);
+        if file.last_opened.as_deref() == Some(id) {
+            file.last_opened = None;
+        }
+        Ok(())
+    })?;
     let folder = root.join("profiles").join(id);
     if folder.exists() {
         fs::remove_dir_all(folder).map_err(|err| err.to_string())?;
@@ -362,18 +410,23 @@ fn profile_paths(root: &Path, meta: &ProfileMeta) -> OpenProfile {
 
 /// Opens `profile`, unloading the open one first. The profile already open
 /// stays as it is (the window reloading after a language change opens it
-/// again), so a restore into it keeps backups and syncs off.
+/// again), so a restore into it keeps backups and syncs off. `current` is
+/// only ever a profile whose collection is open, so a profile whose reopen
+/// failed opens here for real.
 pub fn open_profile(core: &Core, session: &Session, profile: OpenProfile) -> Result<OpenProfile, String> {
     let held = session.hold();
     if let Some(current) = held.current().filter(|current| current.id == profile.id) {
         return Ok(current);
     }
     held.close(core, OnClose::Unload);
+    // The close above ends a restore only when a collection was open.
+    held.end_restore();
     held.open(core, profile)
 }
 
 /// Restarts the core in other interface languages, reopening the open
-/// collection afterwards, in the old core if the new one fails to start.
+/// collection afterwards. The core keeps its old languages if the new ones
+/// fail to start.
 pub fn change_langs(core: &Core, session: &Session, langs: Vec<String>) -> Result<(), String> {
     use anki::services::BackendSyncService;
     // A sync still running would hold the collection open.
@@ -383,14 +436,13 @@ pub fn change_langs(core: &Core, session: &Session, langs: Vec<String>) -> Resul
     let held = session.hold();
     let reopen = held.current();
     held.close(core, OnClose::Reopen);
-    let previous = core.langs();
     let replaced = core.replace(langs).map_err(|err| err.to_string());
-    if replaced.is_err() {
-        // Never leave the app with no collection: go back to the old language.
-        let _ = core.replace(previous);
-    }
     if let Some(profile) = reopen {
-        held.open(core, profile)?;
+        if let Err(err) = held.open(core, profile) {
+            // Nothing is loaded now, so the next profile opened is fresh.
+            held.end_restore();
+            return Err(err);
+        }
     }
     replaced
 }
@@ -409,18 +461,24 @@ async fn blocking<T: Send + 'static>(
 #[tauri::command]
 pub async fn profile_open(app: AppHandle, id: String) -> Result<OpenProfile, String> {
     let root = data_root(&app)?;
-    let mut file = read_file(&root);
-    let meta = file
+    let meta = read_file(&root)
         .profiles
-        .iter()
+        .into_iter()
         .find(|p| p.id == id)
-        .cloned()
         .ok_or("not-found")?;
     let profile = profile_paths(&root, &meta);
     let open = blocking(app, move |core, session| open_profile(core, session, profile)).await?;
-    file.last_opened = Some(meta.id);
-    write_file(&root, &file)?;
+    set_last_opened(&root, &meta.id)?;
     Ok(open)
+}
+
+fn set_last_opened(root: &Path, id: &str) -> Result<(), String> {
+    update_file(root, |file| {
+        if file.profiles.iter().any(|p| p.id == id) {
+            file.last_opened = Some(id.to_string());
+        }
+        Ok(())
+    })
 }
 
 #[tauri::command]
@@ -458,21 +516,25 @@ pub async fn collection_export_colpkg(
     include_media: bool,
     legacy: bool,
 ) -> Result<(), String> {
-    use anki::services::BackendImportExportService;
     blocking(app, move |core, session| {
-        let held = session.hold();
-        let profile = held.current().ok_or("no-profile")?;
-        let backend = core.backend();
-        let result = backend.export_collection_package(anki_proto::import_export::ExportCollectionPackageRequest {
+        export_collection(core, &session.hold(), out_path, include_media, legacy)
+    })
+    .await
+}
+
+fn export_collection(core: &Core, held: &Held, out_path: String, include_media: bool, legacy: bool) -> Result<(), String> {
+    use anki::services::BackendImportExportService;
+    let profile = held.current().ok_or("no-profile")?;
+    let result = core
+        .backend()
+        .export_collection_package(anki_proto::import_export::ExportCollectionPackageRequest {
             out_path,
             include_media,
             legacy,
         });
-        let reopened = backend.open_collection(open_request(&profile));
-        result.map_err(|err| err.to_string())?;
-        reopened.map_err(|err| err.to_string())
-    })
-    .await
+    let reopened = held.reopen(core, &profile);
+    result.map_err(|err| err.to_string())?;
+    reopened
 }
 
 /// Replaces the open profile's collection with a `.colpkg`. A backup of the
@@ -487,21 +549,23 @@ pub fn replace_collection(core: &Core, held: &Held, path: String) -> Result<(), 
     let _ = backend
         .create_backup(backup_request(&profile, true))
         .map_err(|err| err.to_string())?;
-    backend
+    // The core fails to close only a collection that is not open.
+    let request = open_request(&profile);
+    let result = backend
         .close_collection(CloseCollectionRequest {
             downgrade_to_schema11: false,
         })
-        .map_err(|err| err.to_string())?;
-    let request = open_request(&profile);
-    let result = backend.import_collection_package(anki_proto::import_export::ImportCollectionPackageRequest {
-        col_path: request.collection_path.clone(),
-        backup_path: path,
-        media_folder: request.media_folder_path.clone(),
-        media_db: request.media_db_path.clone(),
-    });
-    let reopened = backend.open_collection(request);
+        .and_then(|()| {
+            backend.import_collection_package(anki_proto::import_export::ImportCollectionPackageRequest {
+                col_path: request.collection_path.clone(),
+                backup_path: path,
+                media_folder: request.media_folder_path.clone(),
+                media_db: request.media_db_path.clone(),
+            })
+        });
+    let reopened = held.reopen(core, &profile);
     result.map_err(|err| err.to_string())?;
-    reopened.map_err(|err| err.to_string())
+    reopened
 }
 
 #[tauri::command]
@@ -536,24 +600,33 @@ pub struct SyncAccount {
     pub current_endpoint: Option<String>,
 }
 
-fn sync_file(session: &Session) -> Result<PathBuf, String> {
-    session
-        .current()
-        .map(|p| p.folder.join("sync.json"))
-        .ok_or_else(|| "no-profile".to_string())
+/// `name` in the folder of `profile`, which must be the open profile: the
+/// interface names the profile it loaded, so a write that lands during a
+/// profile switch is refused instead of reaching the next profile. Never
+/// waits for the collection lock, so it answers while a backup runs.
+fn profile_file(session: &Session, profile: &str, name: &str) -> Result<PathBuf, String> {
+    match session.current() {
+        Some(open) if open.id == profile => Ok(open.folder.join(name)),
+        Some(_) => Err("profile-changed".into()),
+        None => Err("no-profile".into()),
+    }
 }
 
 #[tauri::command]
-pub fn sync_account_get(session: State<'_, Session>) -> Result<Option<SyncAccount>, String> {
-    let path = sync_file(&session)?;
+pub fn sync_account_get(session: State<'_, Session>, profile: String) -> Result<Option<SyncAccount>, String> {
+    let path = profile_file(&session, &profile, "sync.json")?;
     Ok(fs::read(path)
         .ok()
         .and_then(|bytes| serde_json::from_slice(&bytes).ok()))
 }
 
 #[tauri::command]
-pub fn sync_account_set(session: State<'_, Session>, account: Option<SyncAccount>) -> Result<(), String> {
-    let path = sync_file(&session)?;
+pub fn sync_account_set(session: State<'_, Session>, profile: String, account: Option<SyncAccount>) -> Result<(), String> {
+    write_sync_account(&session, &profile, account)
+}
+
+fn write_sync_account(session: &Session, profile: &str, account: Option<SyncAccount>) -> Result<(), String> {
+    let path = profile_file(session, profile, "sync.json")?;
     match account {
         Some(account) => write_json(&path, &account),
         None => {
@@ -584,13 +657,6 @@ impl Default for SyncPrefs {
     }
 }
 
-fn sync_prefs_file(session: &Session) -> Result<PathBuf, String> {
-    session
-        .current()
-        .map(|p| p.folder.join("sync-prefs.json"))
-        .ok_or_else(|| "no-profile".to_string())
-}
-
 /// The preferences in `path`; Anki's defaults when there are none yet.
 fn read_sync_prefs(path: &Path) -> SyncPrefs {
     fs::read(path)
@@ -600,15 +666,15 @@ fn read_sync_prefs(path: &Path) -> SyncPrefs {
 }
 
 #[tauri::command]
-pub fn sync_prefs_get(session: State<'_, Session>) -> Result<SyncPrefs, String> {
-    Ok(read_sync_prefs(&sync_prefs_file(&session)?))
+pub fn sync_prefs_get(session: State<'_, Session>, profile: String) -> Result<SyncPrefs, String> {
+    Ok(read_sync_prefs(&profile_file(&session, &profile, "sync-prefs.json")?))
 }
 
 /// Written whole or not at all: a torn file would read as the defaults and
 /// turn syncing on open and close back on.
 #[tauri::command]
-pub fn sync_prefs_set(session: State<'_, Session>, prefs: SyncPrefs) -> Result<(), String> {
-    write_json(&sync_prefs_file(&session)?, &prefs)
+pub fn sync_prefs_set(session: State<'_, Session>, profile: String, prefs: SyncPrefs) -> Result<(), String> {
+    write_json(&profile_file(&session, &profile, "sync-prefs.json")?, &prefs)
 }
 
 #[cfg(test)]
@@ -747,5 +813,156 @@ mod tests {
             .collect();
         assert_eq!(names, ["sync-prefs.json"], "no temporary file is left behind");
         let _ = fs::remove_dir_all(dir);
+    }
+
+    fn temp_root(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("hayaki-{name}-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn profile_at(folder: PathBuf, id: &str) -> OpenProfile {
+        OpenProfile {
+            id: id.into(),
+            name: id.into(),
+            collection_path: folder.join("collection.anki2"),
+            media_folder: folder.join("collection.media"),
+            backup_folder: folder.join("backups"),
+            folder,
+        }
+    }
+
+    /// Puts a folder where the collection file was, so opening it fails, and
+    /// returns a function that puts the file back.
+    fn break_collection(profile: &OpenProfile) -> impl FnOnce() + '_ {
+        let aside = profile.folder.join("aside.anki2");
+        fs::rename(&profile.collection_path, &aside).unwrap();
+        fs::create_dir(&profile.collection_path).unwrap();
+        move || {
+            fs::remove_dir(&profile.collection_path).unwrap();
+            fs::rename(aside, &profile.collection_path).unwrap();
+        }
+    }
+
+    #[test]
+    fn writes_to_one_file_at_the_same_time_all_succeed() {
+        let root = temp_root("write-json");
+        let path = root.join("sync-prefs.json");
+        let errors: Vec<String> = std::thread::scope(|scope| {
+            let writers: Vec<_> = (0..8)
+                .map(|_| scope.spawn(|| (0..100).find_map(|_| write_json(&path, &SyncPrefs::default()).err())))
+                .collect();
+            writers.into_iter().filter_map(|handle| handle.join().unwrap()).collect()
+        });
+        assert_eq!(errors, Vec::<String>::new());
+        assert_eq!(read_sync_prefs(&path), SyncPrefs::default());
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn profile_changes_at_the_same_time_all_land() {
+        let root = temp_root("concurrent");
+        let first = create_profile(&root, "First").unwrap();
+        let root = root.as_path();
+        let errors: Vec<String> = std::thread::scope(|scope| {
+            let creating: Vec<_> = (0..8)
+                .map(|n| scope.spawn(move || create_profile(root, &format!("Profile {n}")).err()))
+                .collect();
+            // The window opening the first profile twice, over and over.
+            let opening: Vec<_> = (0..8)
+                .map(|_| scope.spawn(|| (0..50).find_map(|_| set_last_opened(root, &first.id).err())))
+                .collect();
+            creating
+                .into_iter()
+                .chain(opening)
+                .filter_map(|handle| handle.join().unwrap())
+                .collect()
+        });
+        assert_eq!(errors, Vec::<String>::new());
+
+        let file = read_file(root);
+        let mut names: Vec<_> = file.profiles.iter().map(|p| p.name.clone()).collect();
+        names.sort();
+        let mut expected: Vec<_> = (0..8).map(|n| format!("Profile {n}")).collect();
+        expected.push("First".into());
+        expected.sort();
+        assert_eq!(names, expected, "no profile is lost");
+        assert_eq!(file.last_opened, Some(first.id));
+        let leftovers: Vec<_> = fs::read_dir(root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+            .filter(|name| name != "profiles" && name != "profiles.json")
+            .collect();
+        assert_eq!(leftovers, Vec::<String>::new(), "no temporary file is left behind");
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn a_failed_reopen_after_a_restore_does_not_carry_over_to_the_next_profile() {
+        let root = temp_root("failed-reopen");
+        let core = Core::new(vec!["en".into()]).unwrap();
+        let session = Session::default();
+        let a = profile_at(root.join("a"), "a");
+        let b = profile_at(root.join("b"), "b");
+        open_profile(&core, &session, a.clone()).unwrap();
+        session.hold().mark_restored();
+
+        let repair = break_collection(&a);
+        assert!(change_langs(&core, &session, vec!["ja".into()]).is_err());
+        repair();
+        assert!(session.current().is_none(), "the collection is not open");
+
+        open_profile(&core, &session, b.clone()).unwrap();
+        assert!(!session.restored());
+        close_current(&core, &session, OnClose::Unload);
+        assert_eq!(backups_in(&b), 1, "the next profile backs up on close");
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn a_profile_whose_reopen_failed_opens_again_for_real() {
+        let root = temp_root("reopen");
+        let core = Core::new(vec!["en".into()]).unwrap();
+        let session = Session::default();
+        let a = profile_at(root.join("a"), "a");
+        open_profile(&core, &session, a.clone()).unwrap();
+
+        let repair = break_collection(&a);
+        let out = root.join("export.colpkg").to_string_lossy().into_owned();
+        assert!(export_collection(&core, &session.hold(), out, false, false).is_err());
+        repair();
+        assert!(session.current().is_none(), "the collection is not open");
+
+        open_profile(&core, &session, a.clone()).unwrap();
+        let created = core.backend().create_backup(backup_request(&a, true));
+        assert!(created.is_ok(), "the collection is open: {created:?}");
+        close_current(&core, &session, OnClose::Unload);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn a_sync_account_for_another_profile_is_refused() {
+        let root = temp_root("sync-account");
+        let session = Session::default();
+        let b = profile_at(root.join("b"), "b");
+        fs::create_dir_all(&b.folder).unwrap();
+        let account = SyncAccount {
+            hkey: "key-of-a".into(),
+            ..Default::default()
+        };
+
+        assert!(write_sync_account(&session, "a", Some(account.clone())).is_err(), "nothing open");
+        *session.current.write().unwrap() = Some(b.clone());
+        // A's sign-in finishes after the switch to B.
+        assert_eq!(
+            write_sync_account(&session, "a", Some(account.clone())),
+            Err("profile-changed".into())
+        );
+        assert!(!b.folder.join("sync.json").exists(), "B keeps no account of A's");
+
+        write_sync_account(&session, "b", Some(account)).unwrap();
+        assert!(b.folder.join("sync.json").exists());
+        let _ = fs::remove_dir_all(root);
     }
 }

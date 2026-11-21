@@ -11,6 +11,8 @@
 //! its own.
 
 use std::fs;
+use std::panic::catch_unwind;
+use std::panic::AssertUnwindSafe;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::AtomicU8;
@@ -150,11 +152,21 @@ fn periodic_backup(core: &Core, session: &Session) -> Result<(), AnkiError> {
     }
 }
 
+/// A failed or panicking backup is reported and the timer keeps running, so
+/// one bad backup does not end automatic backups until the app restarts.
+fn checked_backup(core: &Core, session: &Session) -> Result<(), String> {
+    match catch_unwind(AssertUnwindSafe(|| periodic_backup(core, session))) {
+        Ok(result) => result.map_err(|err| err.to_string()),
+        Err(payload) => Err(crate::core::panic_message(&*payload)),
+    }
+}
+
 pub fn start_backup_timer(app: AppHandle) {
     std::thread::spawn(move || loop {
         std::thread::sleep(BACKUP_CHECK);
-        if let Err(err) = periodic_backup(&app.state::<Core>(), &app.state::<Session>()) {
-            let _ = app.emit(BACKUP_FAILED, err.to_string());
+        if let Err(err) = checked_backup(&app.state::<Core>(), &app.state::<Session>()) {
+            eprintln!("periodic backup failed: {err}");
+            let _ = app.emit(BACKUP_FAILED, err);
         }
     });
 }
