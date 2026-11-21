@@ -32,6 +32,7 @@ import { ShortcutsSheet } from "@/shell/ShortcutsSheet";
 import { LifecycleHost } from "@/shell/Lifecycle";
 import { ToolsHost } from "@/shell/Tools";
 import { WindowHost } from "@/shell/WindowHost";
+import { AnkiConnectHost } from "@/shell/AnkiConnectHost";
 import { ConfirmHost } from "@/components/confirm";
 import { CardInfoHost } from "@/screens/card-info";
 import { FilteredHost } from "@/screens/filtered";
@@ -376,6 +377,7 @@ function Workspace() {
       <CommandPalette onSync={() => void sync.run()} />
       <ExportDialog />
       <ToolsHost />
+      <AnkiConnectHost onSync={() => void sync.run()} />
       <Suspense fallback={null}>
         <PackageImportHost />
       </Suspense>

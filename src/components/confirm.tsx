@@ -1,33 +1,51 @@
 // Copyright: Hayaki contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-/** `await confirm({...})` from anywhere; the host renders the dialog. */
+/**
+ * `await confirm({...})` from anywhere; the host renders the dialog. Requests
+ * made while one is open wait their turn, so none replaces another.
+ */
 import { create } from "zustand";
 
 import { t } from "@/lib/i18n";
 
 import { Button, Dialog } from "./ui";
 
-interface Request {
+export interface ConfirmOptions {
   title: string;
   message: string;
   confirm: string;
   danger?: boolean;
+  /** Aborting closes the dialog, or takes it out of the queue, as Cancel. */
+  signal?: AbortSignal;
+}
+
+interface Request extends Omit<ConfirmOptions, "signal"> {
   resolve: (ok: boolean) => void;
 }
 
-const useConfirm = create<{ request: Request | null }>(() => ({ request: null }));
+const useConfirm = create<{ queue: Request[] }>(() => ({ queue: [] }));
 
-export function confirm(options: Omit<Request, "resolve">): Promise<boolean> {
-  return new Promise((resolve) => useConfirm.setState({ request: { ...options, resolve } }));
+export function confirm({ signal, ...options }: ConfirmOptions): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve(false);
+    const abort = () => request.resolve(false);
+    const request: Request = {
+      ...options,
+      resolve: (ok) => {
+        signal?.removeEventListener("abort", abort);
+        useConfirm.setState((s) => ({ queue: s.queue.filter((r) => r !== request) }));
+        resolve(ok);
+      },
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+    useConfirm.setState((s) => ({ queue: [...s.queue, request] }));
+  });
 }
 
 export function ConfirmHost() {
-  const request = useConfirm((s) => s.request);
-  const close = (ok: boolean) => {
-    request?.resolve(ok);
-    useConfirm.setState({ request: null });
-  };
+  const request = useConfirm((s) => s.queue[0]);
+  const close = (ok: boolean) => request?.resolve(ok);
   return (
     <Dialog
       open={!!request}

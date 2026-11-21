@@ -17,6 +17,7 @@ import { tr } from "@/lib/i18n";
 import { tp } from "@/lib/strings/preferences";
 import { SelectField, Switch } from "@/screens/deck-options/controls";
 
+import { AnkiConnectSection } from "./AnkiConnectSection";
 import { minsToSecs, secsToMins, withPreference, type Fields, type Groups } from "./model";
 
 const KEY = ["preferences"] as const;
@@ -281,6 +282,8 @@ export function AnkiPreferencesSections() {
           />
         </Row>
       </Section>
+
+      <AnkiConnectSection />
     </>
   );
 }

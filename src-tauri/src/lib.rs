@@ -1,6 +1,7 @@
 // Copyright: Hayaki contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
+mod ankiconnect;
 mod core;
 mod lifecycle;
 mod media;
@@ -91,6 +92,7 @@ pub fn run() {
         .manage(lifecycle::Lifecycle::default())
         .setup(|app| {
             lifecycle::start_backup_timer(app.handle().clone());
+            ankiconnect::AnkiConnect::init(app.handle());
             #[cfg(target_os = "macos")]
             app.set_menu(quit_through_lifecycle(app.handle())?)?;
             Ok(())
@@ -113,6 +115,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             app_info,
+            ankiconnect::ankiconnect_get,
+            ankiconnect::ankiconnect_set,
+            ankiconnect::ankiconnect_permission_reply,
             core::core_call,
             profiles::profiles_list,
             profiles::profile_create,
