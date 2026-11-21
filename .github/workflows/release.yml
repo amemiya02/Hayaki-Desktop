@@ -1,0 +1,79 @@
+# Builds the installers and attaches them to a draft GitHub release for the tag.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: ""
+          - os: macos-latest
+            args: "--target x86_64-apple-darwin"
+          - os: macos-latest
+            args: "--target aarch64-apple-darwin"
+    runs-on: ${{ matrix.os }}
+    env:
+      DESCRIPTORS_BIN: ${{ github.workspace }}/build/core/descriptors.bin
+    steps:
+      - if: runner.os == 'Windows'
+        run: git config --global core.longpaths true
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Anki's translations
+        run: git -C vendor/anki submodule update --init --depth 1 ftl/core-repo ftl/qt-repo
+
+      - name: Name the build in sync requests
+        shell: bash
+        run: mkdir -p vendor/anki/out && printf 'hayaki-%s' "$(git -C vendor/anki rev-parse --short=8 HEAD)" > vendor/anki/out/buildhash
+
+      - uses: arduino/setup-protoc@v3
+        with:
+          version: "29.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Rust toolchain
+        shell: bash
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          if [[ "${{ matrix.args }}" == *x86_64-apple-darwin* ]]; then rustup target add x86_64-apple-darwin; fi
+          if [[ "${{ matrix.args }}" == *aarch64-apple-darwin* ]]; then rustup target add aarch64-apple-darwin; fi
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.args }}
+
+      - run: npm ci
+
+      - name: Core descriptors and typed calls
+        shell: bash
+        run: |
+          (cd src-tauri && cargo build --package anki_proto)
+          npm run core:gen
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Hayaki for desktop ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
