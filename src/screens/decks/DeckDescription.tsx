@@ -3,6 +3,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { toast } from "sonner";
 import { useMemo } from "react";
 
 import { cn } from "@/components/ui";
@@ -43,7 +44,7 @@ export function DeckDescription({ text, markdown, className }: { text: string; m
         if (!link) return;
         e.preventDefault();
         const href = link.getAttribute("href") ?? "";
-        if (isSafeLink(href)) void openUrl(href);
+        if (isSafeLink(href)) openUrl(href).catch((error: unknown) => toast.error(String(error)));
       }}
     />
   );

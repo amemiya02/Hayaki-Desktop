@@ -38,7 +38,7 @@ function showGhost(label: string): HTMLDivElement {
   ghost ??= document.createElement("div");
   ghost.setAttribute("aria-hidden", "true");
   ghost.className =
-    "pointer-events-none fixed z-[60] flex max-w-[280px] flex-col gap-0.5 rounded-[9px] border border-line bg-raised px-3 py-1.5 text-control shadow-pop";
+    "pointer-events-none fixed left-0 top-0 z-[60] flex max-w-[280px] flex-col gap-0.5 rounded-[9px] border border-line bg-raised px-3 py-1.5 text-control shadow-pop";
   ghost.replaceChildren();
   const name = document.createElement("span");
   name.className = "truncate font-medium text-ink";
@@ -91,6 +91,9 @@ function begin(down: PointerEvent, node: DeckTreeNode, getRoot: () => DeckTreeNo
   let lastX = startX;
   let lastY = startY;
   let el: HTMLDivElement | null = null;
+  // Escape ends the drag at once, but the button may still be held; the
+  // listeners stay until it is released so that release's click is swallowed.
+  let cancelled = false;
 
   const update = (x: number, y: number) => {
     const root = getRoot();
@@ -124,7 +127,7 @@ function begin(down: PointerEvent, node: DeckTreeNode, getRoot: () => DeckTreeNo
   };
 
   const move = (e: PointerEvent) => {
-    if (e.pointerId !== down.pointerId) return;
+    if (e.pointerId !== down.pointerId || cancelled) return;
     lastX = e.clientX;
     lastY = e.clientY;
     if (!active) {
@@ -139,19 +142,29 @@ function begin(down: PointerEvent, node: DeckTreeNode, getRoot: () => DeckTreeNo
     update(e.clientX, e.clientY);
   };
 
-  const finish = (commit: boolean) => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", up);
-    window.removeEventListener("pointercancel", cancel);
-    window.removeEventListener("keydown", key, true);
+  const stopVisuals = () => {
     if (raf) cancelAnimationFrame(raf);
-    if (!active) return;
+    raf = 0;
     hideGhost();
     document.documentElement.style.cursor = "";
     document.body.style.userSelect = "";
     const { over, valid } = useDeckDrag.getState();
     useDeckDrag.setState({ source: null, over: null, valid: false });
+    return { over, valid };
+  };
+
+  const finish = (commit: boolean) => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", cancel);
+    window.removeEventListener("keydown", key, true);
+    if (!active) {
+      if (raf) cancelAnimationFrame(raf);
+      return;
+    }
     swallowNextClick();
+    if (cancelled) return;
+    const { over, valid } = stopVisuals();
     if (commit && valid && over !== null) void reparentDeck(getRoot(), node.deckId, over);
   };
   const up = (e: PointerEvent) => e.pointerId === down.pointerId && finish(true);
@@ -159,7 +172,10 @@ function begin(down: PointerEvent, node: DeckTreeNode, getRoot: () => DeckTreeNo
   const key = (e: KeyboardEvent) => {
     if (e.key !== "Escape") return;
     e.stopPropagation();
-    finish(false);
+    if (!active) return finish(false);
+    if (cancelled) return;
+    cancelled = true;
+    stopVisuals();
   };
 
   window.addEventListener("pointermove", move);

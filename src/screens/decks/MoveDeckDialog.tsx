@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, cn, Dialog, TextField } from "@/components/ui";
 import type { DeckTreeNode } from "@/lib/anki/proto/anki/decks_pb";
-import { t } from "@/lib/i18n";
+import { tr } from "@/lib/i18n";
 import { leafName } from "@/lib/queries";
 import { td } from "@/lib/strings/decks";
 
@@ -43,7 +43,7 @@ export function MoveDeckDialog({ deck, root, onClose }: { deck: DeckTreeNode | n
       description={td("moveHint")}
       footer={
         <>
-          <Button onClick={onClose}>{t("common.cancel")}</Button>
+          <Button onClick={onClose}>{tr("actions-cancel")}</Button>
           <Button variant="primary" disabled={targets.length === 0 || busy} onClick={() => void submit()}>
             {td("moveConfirm")}
           </Button>
