@@ -80,7 +80,27 @@ Hayaki 用一套统一的设计系统，从零重写了 Anki 桌面版的界面�
 
 ## 下载
 
-在[最新版本](https://github.com/amemiya02/Hayaki-Desktop/releases/latest)中选择对应平台的安装包：Windows 10/11 用 `.exe` 或 `.msi`；macOS 用 `.dmg`，Apple 芯片选 `aarch64`，Intel 芯片选 `x64`。安装包尚未签名，首次打开的方法见版本说明。
+在[最新版本](https://github.com/amemiya02/Hayaki-Desktop/releases/latest)中下载对应平台的安装包：
+
+| 平台 | 文件 |
+| --- | --- |
+| Windows 10/11（64 位） | `Hayaki_<版本>_x64-setup.exe`，或 `.msi` |
+| macOS，Apple 芯片（M1 及更新） | `Hayaki_<版本>_aarch64.dmg` |
+| macOS，Intel 芯片 | `Hayaki_<版本>_x64.dmg` |
+
+### 首次打开
+
+安装包尚未签名，所以系统会提示一次。
+
+- **macOS**：打开 `.dmg`，把 Hayaki 拖到"应用程序"，然后打开它。被系统拦截后，进入**系统设置 → 隐私与安全性**，在页面下方找到关于 Hayaki 的提示，点击**仍要打开**。如果提示"已损坏，无法打开"，在终端运行下面的命令后再打开：
+
+  ```sh
+  xattr -cr /Applications/Hayaki.app
+  ```
+
+- **Windows**：如果出现"Windows 已保护你的电脑"，点击**更多信息**，再点击**仍要运行**。
+
+每个版本都列出了所有文件的 SHA-256 校验值。macOS 上可以用 `shasum -a 256` 核对下载的文件，Windows 上可以在 PowerShell 中用 `Get-FileHash`。
 
 ## 从源码构建
 

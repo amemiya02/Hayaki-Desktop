@@ -78,7 +78,27 @@ Hayaki rebuilds Anki Desktop's interface from scratch, in one design system, on 
 
 ## Download
 
-Get the installer for your platform from the [latest release](https://github.com/amemiya02/Hayaki-Desktop/releases/latest): `.exe` or `.msi` for Windows 10/11, and `.dmg` for macOS on Apple silicon (`aarch64`) or Intel (`x64`). The installers are not code-signed yet, so the release notes explain how to open them the first time.
+Get the installer for your platform from the [latest release](https://github.com/amemiya02/Hayaki-Desktop/releases/latest):
+
+| Platform | File |
+| --- | --- |
+| Windows 10/11 (64-bit) | `Hayaki_<version>_x64-setup.exe`, or the `.msi` |
+| macOS, Apple silicon (M1 and later) | `Hayaki_<version>_aarch64.dmg` |
+| macOS, Intel | `Hayaki_<version>_x64.dmg` |
+
+### Opening Hayaki the first time
+
+The installers are not code-signed yet, so the system warns about them once.
+
+- **macOS.** Open the `.dmg` and drag Hayaki to Applications, then open it. When macOS blocks the app, go to **System Settings → Privacy & Security**, scroll to the message about Hayaki and click **Open Anyway**. If macOS says the app "is damaged and can't be opened", run this in Terminal and open it again:
+
+  ```sh
+  xattr -cr /Applications/Hayaki.app
+  ```
+
+- **Windows.** If SmartScreen shows "Windows protected your PC", click **More info**, then **Run anyway**.
+
+Each release lists the SHA-256 checksum of every file, so you can check a download with `shasum -a 256` on macOS or `Get-FileHash` in PowerShell.
 
 ## Build from source
 
