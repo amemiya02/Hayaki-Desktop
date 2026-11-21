@@ -39,7 +39,7 @@ export function Chooser({
   disabled,
 }: {
   label: string;
-  shortcut: string;
+  shortcut?: string;
   items: ChooserItem[];
   value: bigint | null;
   onSelect: (id: bigint) => void;
@@ -52,7 +52,7 @@ export function Chooser({
   const current = items.find((item) => item.id === value);
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Tooltip content={`${label} (${shortcut})`}>
+      <Tooltip content={shortcut ? `${label} (${shortcut})` : label}>
         <Popover.Trigger asChild disabled={disabled}>
           <button
             type="button"

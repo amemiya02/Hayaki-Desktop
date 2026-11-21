@@ -9,11 +9,13 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { AlertCircle, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Chooser } from "@/components/editor/Chooser";
 import { Button, Segmented, Spinner, TextField } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
 import { tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { queryClient, useCurrentDeck } from "@/lib/queries";
+import { te } from "@/lib/strings/editor";
 import { ts } from "@/lib/strings/stats";
 
 import { daysToRevlogRange, type GraphRange } from "./data";
@@ -53,17 +55,21 @@ export function StatsScreen({ deckId }: { deckId?: bigint }) {
   const [custom, setCustom] = useState("");
   const [draft, setDraft] = useState("");
   const [range, setRange] = useState<GraphRange>("month");
+  const [chosenId, setChosenId] = useState<bigint | undefined>(deckId);
+  const [choosing, setChoosing] = useState(false);
   const cancelled = useRef(false);
+  useEffect(() => setChosenId(deckId), [deckId]);
 
-  const { data: deck } = useQuery({
-    queryKey: ["deck", String(deckId)],
-    queryFn: () => core.getDeck({ did: deckId! }),
-    enabled: deckId !== undefined,
+  const { data: decks } = useQuery({
+    queryKey: ["stats", "deckNames"],
+    queryFn: async () =>
+      (await core.getDeckNames({ skipEmptyDefault: true, includeFiltered: true })).entries.map((e) => ({ id: e.id, name: e.name })),
   });
   const { data: current } = useCurrentDeck();
-  const deckName = deckId !== undefined ? deck?.name : current?.name;
+  const selectedId = chosenId ?? current?.id;
+  const deckName = decks?.find((d) => d.id === selectedId)?.name;
 
-  const deckQuery = deckId !== undefined ? (deck ? deckSearch(deck.name) : null) : "deck:current";
+  const deckQuery = chosenId === undefined ? "deck:current" : deckName ? deckSearch(deckName) : null;
   const search = scope === "deck" ? deckQuery : scope === "collection" ? "" : custom;
   const days = range === "all" ? 0 : 365;
   const revlogRange = daysToRevlogRange(days);
@@ -216,10 +222,17 @@ export function StatsScreen({ deckId }: { deckId?: bigint }) {
               className="bg-surface-2 pl-8"
             />
           </form>
-          {scope === "deck" && deckName && (
-            <span className="min-w-0 max-w-[260px] truncate text-caption text-ink-3" title={deckName}>
-              {deckName.split("::").join(" › ")}
-            </span>
+          {scope === "deck" && (
+            <Chooser
+              label={tr("decks-deck")}
+              items={decks ?? []}
+              value={selectedId ?? null}
+              onSelect={setChosenId}
+              open={choosing}
+              onOpenChange={setChoosing}
+              searchLabel={te("searchDecks")}
+              hierarchical
+            />
           )}
           <span className="ml-auto inline-flex items-center gap-3">
             {graphs.isFetching && <Spinner />}
