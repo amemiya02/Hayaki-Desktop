@@ -102,9 +102,13 @@ npm run app                     # 以开发模式运行
 ## 工作原理
 
 ```
-React 19 界面 ──► 一个 Tauri 命令 ──► Anki Rust 引擎（vendor/anki，未修改）
-      ▲              （protobuf）                  │
-      └──── 根据引擎的描述文件自动生成的类型化调用
+React 19 界面
+   │  类型化调用，根据引擎自己的描述文件生成
+   ▼
+一个 Tauri 命令    收发 protobuf
+   │
+   ▼
+Anki Rust 引擎     vendor/anki 26.09.4，未修改
 ```
 
 - [`vendor/anki`](vendor/anki) 是上游 Anki `26.09.4`，以 Rust 路径依赖的方式链接。

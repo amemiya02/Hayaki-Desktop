@@ -100,9 +100,13 @@ npm run app                     # run in development mode
 ## How it works
 
 ```
-React 19 interface ──► one Tauri command ──► Anki's Rust engine (vendor/anki, unmodified)
-        ▲                  (protobuf)                     │
-        └──── typed calls generated from the engine's descriptors
+React 19 interface
+   │  typed calls, generated from the engine's own descriptors
+   ▼
+one Tauri command      protobuf in, protobuf out
+   │
+   ▼
+Anki's Rust engine     vendor/anki 26.09.4, unmodified
 ```
 
 - [`vendor/anki`](vendor/anki) is upstream Anki at `26.09.4`, linked as Rust path dependencies.
