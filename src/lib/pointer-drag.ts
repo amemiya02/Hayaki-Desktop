@@ -11,6 +11,10 @@
  * the kind names, `<el data-x-drop="<target key>">`. Scroll containers carry
  * `data-drag-scroll` and scroll while the pointer is near their edge; a
  * control inside a draggable row carries `data-no-drag`.
+ *
+ * For a reorderable list set `edges`: each row is a target and the drop lands
+ * before or after it, by which half of the row the pointer is in. `useTarget`
+ * then reports that `edge`, for drawing the insertion line.
  */
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { create } from "zustand";
@@ -18,17 +22,21 @@ import { create } from "zustand";
 const THRESHOLD = 5;
 const EDGE = 44;
 
+export type Edge = "before" | "after";
+
 export interface PointerDragConfig<S> {
   /** The drop target attribute, such as `data-deck-drop`. Its value is the target key. */
   attribute: string;
   /** The ghost's title. */
   label: (source: S) => string;
-  /** Whether `source` may be dropped on the target. */
-  accepts: (source: S, target: string) => boolean;
+  /** Targets are list rows: the drop lands before or after the one under the pointer. */
+  edges?: boolean;
+  /** Whether `source` may be dropped on the target. `edge` is null unless `edges` is set. */
+  accepts: (source: S, target: string, edge: Edge | null) => boolean;
   /** The words under the ghost while the pointer is over a target. */
-  hint: (source: S, target: string, valid: boolean) => string;
+  hint: (source: S, target: string, valid: boolean, edge: Edge | null) => string;
   /** Runs on a valid drop. */
-  drop: (source: S, target: string) => void;
+  drop: (source: S, target: string, edge: Edge | null) => void;
 }
 
 interface DragState {
@@ -36,6 +44,7 @@ interface DragState {
   source: string | null;
   /** The target key under the pointer, valid or not. */
   over: string | null;
+  edge: Edge | null;
   valid: boolean;
 }
 
@@ -44,9 +53,11 @@ export interface TargetState {
   over: boolean;
   valid: boolean;
   isSource: boolean;
+  /** Which side of the target the drop would land on, when the kind has `edges`. */
+  edge: Edge | null;
 }
 
-const IDLE: DragState = { source: null, over: null, valid: false };
+const IDLE: DragState = { source: null, over: null, edge: null, valid: false };
 
 let ghost: HTMLDivElement | null = null;
 
@@ -84,8 +95,14 @@ function swallowNextClick(): void {
 export function createPointerDrag<S>(config: PointerDragConfig<S>) {
   const useDrag = create<DragState>(() => IDLE);
 
-  const targetAt = (x: number, y: number): string | null =>
-    document.elementFromPoint(x, y)?.closest<HTMLElement>(`[${config.attribute}]`)?.getAttribute(config.attribute) ?? null;
+  const targetAt = (x: number, y: number): { key: string; edge: Edge | null } | null => {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>(`[${config.attribute}]`);
+    const key = el?.getAttribute(config.attribute);
+    if (!el || key == null) return null;
+    if (!config.edges) return { key, edge: null };
+    const rect = el.getBoundingClientRect();
+    return { key, edge: y < rect.top + rect.height / 2 ? "before" : "after" };
+  };
 
   function begin(down: PointerEvent, source: S, key: string): void {
     const { clientX: startX, clientY: startY } = down;
@@ -99,14 +116,16 @@ export function createPointerDrag<S>(config: PointerDragConfig<S>) {
     let cancelled = false;
 
     const update = (x: number, y: number) => {
-      const over = targetAt(x, y);
-      const valid = over !== null && config.accepts(source, over);
-      useDrag.setState({ over, valid });
+      const hit = targetAt(x, y);
+      const over = hit?.key ?? null;
+      const edge = hit?.edge ?? null;
+      const valid = over !== null && config.accepts(source, over, edge);
+      useDrag.setState({ over, edge, valid });
       if (!el) return;
       el.style.transform = `translate(${x + 14}px, ${y + 14}px)`;
       const hint = el.querySelector<HTMLElement>("[data-role=hint]");
       if (hint) {
-        hint.textContent = over === null ? "" : config.hint(source, over, valid);
+        hint.textContent = over === null ? "" : config.hint(source, over, valid, edge);
         hint.className = `truncate text-caption ${over !== null && !valid ? "text-danger" : "text-ink-3"}`;
       }
     };
@@ -133,7 +152,7 @@ export function createPointerDrag<S>(config: PointerDragConfig<S>) {
         if (Math.hypot(e.clientX - startX, e.clientY - startY) < THRESHOLD) return;
         active = true;
         el = showGhost(config.label(source));
-        useDrag.setState({ source: key, over: null, valid: false });
+        useDrag.setState({ source: key, over: null, edge: null, valid: false });
         document.documentElement.style.cursor = "grabbing";
         document.body.style.userSelect = "none";
         raf = requestAnimationFrame(autoscroll);
@@ -147,9 +166,9 @@ export function createPointerDrag<S>(config: PointerDragConfig<S>) {
       hideGhost();
       document.documentElement.style.cursor = "";
       document.body.style.userSelect = "";
-      const { over, valid } = useDrag.getState();
+      const { over, edge, valid } = useDrag.getState();
       useDrag.setState(IDLE);
-      return { over, valid };
+      return { over, edge, valid };
     };
 
     const finish = (commit: boolean) => {
@@ -163,8 +182,8 @@ export function createPointerDrag<S>(config: PointerDragConfig<S>) {
       }
       swallowNextClick();
       if (cancelled) return;
-      const { over, valid } = stopVisuals();
-      if (commit && valid && over !== null) config.drop(source, over);
+      const { over, edge, valid } = stopVisuals();
+      if (commit && valid && over !== null) config.drop(source, over, edge);
     };
     const up = (e: PointerEvent) => e.pointerId === down.pointerId && finish(true);
     const cancel = (e: PointerEvent) => e.pointerId === down.pointerId && finish(false);
@@ -199,7 +218,8 @@ export function createPointerDrag<S>(config: PointerDragConfig<S>) {
     const source = useDrag((s) => s.source);
     const over = useDrag((s) => s.over === key);
     const valid = useDrag((s) => s.valid);
-    return { dragging: source !== null, over, valid: over && valid, isSource: source === key };
+    const edge = useDrag((s) => (s.over === key ? s.edge : null));
+    return { dragging: source !== null, over, valid: over && valid, isSource: source === key, edge };
   }
 
   return { useDrag, handlers, useTarget };

@@ -27,7 +27,7 @@ export interface Dnd {
   handlers?: { onPointerDown: (e: PointerEvent<HTMLElement>) => void };
 }
 
-const IDLE: TargetState = { dragging: false, over: false, valid: false, isSource: false };
+const IDLE: TargetState = { dragging: false, over: false, valid: false, isSource: false, edge: null };
 
 export interface RenameProps {
   editing: boolean;

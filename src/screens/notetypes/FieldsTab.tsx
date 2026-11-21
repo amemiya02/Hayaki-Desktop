@@ -3,7 +3,7 @@
 
 /** The Fields tab (qt/aqt/fields.py): reorder, add, rename, delete and per-field options. */
 import { ArrowDown, ArrowUp, GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
-import { useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 import { confirm } from "@/components/confirm";
@@ -14,6 +14,7 @@ import { plainLabel, tn } from "@/lib/strings/notetypes";
 import { Row, Section, Switch } from "@/screens/deck-options/controls";
 
 import { NameDialog } from "./dialogs";
+import { fieldDrag } from "./field-drag";
 import { addField, checkFieldName, moveField, removeField, renameField, setSortField, updateField } from "./model";
 
 type Prompt = { kind: "add" } | { kind: "rename"; index: number };
@@ -30,7 +31,8 @@ export function FieldsTab({
 }) {
   const [selected, setSelected] = useState(0);
   const [prompt, setPrompt] = useState<Prompt | null>(null);
-  const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
+  const drag = fieldDrag.useDrag();
+  const dragFrom = drag.source === null ? null : Number(drag.source);
   const list = useRef<HTMLDivElement>(null);
   const fields = working.fields;
   const index = Math.min(selected, fields.length - 1);
@@ -113,11 +115,6 @@ export function FieldsTab({
     }
   };
 
-  const dropTarget = (e: DragEvent<HTMLElement>, i: number) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    return e.clientY < rect.top + rect.height / 2 ? i : i + 1;
-  };
-
   const set = (fn: Parameters<typeof updateField>[2]) => update((nt) => updateField(nt, index, fn));
   const config = field?.config;
 
@@ -133,44 +130,25 @@ export function FieldsTab({
             aria-describedby="fields-reorder-hint"
             onKeyDown={onListKey}
             className="overflow-hidden rounded-[12px] border border-line bg-surface py-1"
-            onDragOver={(e) => drag && e.preventDefault()}
           >
             {fields.map((f, i) => (
               <div key={`${f.ord?.val ?? "new"}-${f.name}-${i}`} className="relative px-1">
-                {drag && drag.to === i && drag.from !== i && drag.from !== i - 1 && (
+                {drag.valid && drag.over === String(i) && drag.edge === "before" && (
                   <div className="pointer-events-none absolute inset-x-3 -top-px h-0.5 rounded-full bg-accent" aria-hidden="true" />
                 )}
                 <div
                   role="option"
                   aria-selected={i === index}
                   tabIndex={i === index ? 0 : -1}
-                  draggable
+                  data-field-drop={i}
+                  {...fieldDrag.handlers({ index: i, name: f.name, move }, String(i))}
+                  onPointerDownCapture={() => setSelected(i)}
                   onClick={() => setSelected(i)}
                   onDoubleClick={() => setPrompt({ kind: "rename", index: i })}
-                  onDragStart={(e) => {
-                    e.dataTransfer.effectAllowed = "move";
-                    e.dataTransfer.setData("text/plain", f.name);
-                    setSelected(i);
-                    setDrag({ from: i, to: i });
-                  }}
-                  onDragOver={(e) => {
-                    if (!drag) return;
-                    e.preventDefault();
-                    const to = dropTarget(e, i);
-                    if (to !== drag.to) setDrag({ ...drag, to });
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (!drag) return;
-                    const to = drag.to > drag.from ? drag.to - 1 : drag.to;
-                    setDrag(null);
-                    move(drag.from, to);
-                  }}
-                  onDragEnd={() => setDrag(null)}
                   className={cn(
                     "flex h-9 cursor-default select-none items-center gap-2 rounded-[7px] pl-1.5 pr-2.5 text-[13px] outline-offset-[-2px]",
                     i === index ? "bg-accent-soft text-accent-ink" : "text-ink hover:bg-surface-2",
-                    drag?.from === i && "opacity-50",
+                    dragFrom === i && "opacity-50",
                   )}
                 >
                   <GripVertical className="size-4 shrink-0 cursor-grab text-ink-3" aria-hidden="true" />
@@ -180,7 +158,7 @@ export function FieldsTab({
                     <span className="shrink-0 rounded-full bg-surface-3 px-2 py-px text-[11.5px] font-medium text-ink-2">{tn("sortField")}</span>
                   )}
                 </div>
-                {drag && i === fields.length - 1 && drag.to === fields.length && drag.from !== i && (
+                {drag.valid && drag.over === String(i) && drag.edge === "after" && (
                   <div className="pointer-events-none absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-accent" aria-hidden="true" />
                 )}
               </div>

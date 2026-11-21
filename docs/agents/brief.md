@@ -5,6 +5,7 @@ Hayaki Desktop rewrites Anki Desktop's interface from scratch: Tauri 2 + React 1
 ## Hard rules
 
 - The app runs in dev mode in another process. Do NOT start `tauri dev`, do NOT run `scripts/drive.mjs`, do NOT kill the `hayaki` process, do NOT commit. The lead verifies visually.
+- Never use HTML5 drag and drop (`draggable`, `onDragStart`, `onDrop`, `dataTransfer`): `dragDropEnabled: true` in `src-tauri/tauri.conf.json` means it never fires. Drag with `src/lib/pointer-drag.ts`; `src/lib/no-html5-dnd.test.ts` fails otherwise.
 - Edit only the files your task names. Need a change elsewhere? Describe it in your report.
 - Done means: `npx tsc --noEmit -p .` passes (repo root) and `npx vitest run <your folder>` passes. Put pure logic in testable modules with vitest tests.
 - Anki's words, verbatim. Use `tr("ftl-key", args)` from `src/lib/i18n.ts` for every string upstream has. Every key must exist in `vendor/anki/ftl/core/*.ftl` or `vendor/anki/ftl/qt/*.ftl` (grep to verify). Upstream Svelte/TS `tr.someThing()` maps to the key `some-thing`; Python `tr.some_thing()` likewise. Hayaki-only strings go in your own `src/lib/strings/<area>.ts` via `makeStrings({ en, zh, ja })`, in English, Simplified Chinese and Japanese. Voice: short plain second-person sentences that say what will happen; no exclamation marks.
