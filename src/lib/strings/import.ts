@@ -33,7 +33,7 @@ export const ti = makeStrings({
   ja: {
     loadError: "このファイルを読み込めませんでした。",
     retry: "再試行",
-    fromColumn: "列から: {column}",
+    fromColumn: "列から：{column}",
     preview: "ファイルの先頭の行",
     noPreview: "ファイルに行がありません。",
     abort: "中止",
