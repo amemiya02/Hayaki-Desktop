@@ -25,8 +25,6 @@ interface Prefs {
   sidebarWidth: number;
   /** The sidebar is hidden (Ctrl+\); its width is kept for when it returns. */
   sidebarCollapsed: boolean;
-  /** Play a side's sounds when it is shown. */
-  autoplay: boolean;
   setTheme(theme: ThemeId): void;
   setAppearance(appearance: Appearance): void;
   setSidebarWidth(width: number): void;
@@ -41,7 +39,6 @@ export const usePrefs = create<Prefs>()(
       appearance: "system",
       sidebarWidth: SIDEBAR_DEFAULT,
       sidebarCollapsed: false,
-      autoplay: true,
       setTheme: (theme) => set({ theme }),
       setAppearance: (appearance) => set({ appearance }),
       setSidebarWidth: (width) => set({ sidebarWidth: clampSidebarWidth(width) }),

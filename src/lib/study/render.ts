@@ -40,6 +40,12 @@ export interface RenderedCard {
   typeAnswer: TypeAnswer | null;
   /** Whether either side needs MathJax, so it can load before it is shown. */
   hasMath: boolean;
+  /** Preferences > Review > Show play buttons is off: sound references are removed. */
+  hidePlayButtons: boolean;
+}
+
+export interface RenderOptions {
+  hidePlayButtons?: boolean;
 }
 
 const TYPE_ANSWER = /\[\[type:(.+?)\]\]/;
@@ -58,7 +64,9 @@ function flatten(nodes: RenderedTemplateNode[]): string {
     .join("");
 }
 
-function playButtons(text: string): string {
+function playButtons(text: string, hide = false): string {
+  // Anki's `strip_av_refs` when the play buttons are hidden.
+  if (hide) return text.replace(AV_REF, "");
   return text.replace(
     AV_REF,
     (_, ref: string) =>
@@ -113,7 +121,7 @@ async function resolveTypeAnswer(card: Card, html: string): Promise<{ html: stri
   return { html: html.replace(TYPE_ANSWER, input), typeAnswer: { expected, combining, font, size } };
 }
 
-export async function renderCard(card: Card, nightMode: boolean): Promise<RenderedCard> {
+export async function renderCard(card: Card, nightMode: boolean, { hidePlayButtons = false }: RenderOptions = {}): Promise<RenderedCard> {
   const output = await renderExistingCard({ cardId: card.id, browser: false, partialRender: false });
   const [q, a] = await Promise.all([
     extractAvTags({ text: flatten(output.questionNodes), questionSide: true }),
@@ -125,7 +133,7 @@ export async function renderCard(card: Card, nightMode: boolean): Promise<Render
     .join(" ");
   return {
     cardId: card.id,
-    question: playButtons(question),
+    question: playButtons(question, hidePlayButtons),
     answerTemplate: a.text,
     css: output.css,
     bodyClass,
@@ -133,6 +141,7 @@ export async function renderCard(card: Card, nightMode: boolean): Promise<Render
     answerAv: a.avTags,
     typeAnswer,
     hasMath: MATH.test(q.text) || MATH.test(a.text),
+    hidePlayButtons,
   };
 }
 
@@ -140,14 +149,15 @@ export async function renderCard(card: Card, nightMode: boolean): Promise<Render
 export async function renderAnswer(rendered: RenderedCard, typed: string | null): Promise<string> {
   let html = rendered.answerTemplate;
   const type = rendered.typeAnswer;
-  if (!type) return playButtons(html.replace(TYPE_ANSWER, ""));
+  const hide = rendered.hidePlayButtons;
+  if (!type) return playButtons(html.replace(TYPE_ANSWER, ""), hide);
   const original = html;
   const withoutHr = html.replace("<hr id=answer>", "");
   const hadHr = withoutHr.length !== html.length;
   html = withoutHr;
-  if (hadHr && !TYPE_ANSWER.test(html)) return playButtons(original);
+  if (hadHr && !TYPE_ANSWER.test(html)) return playButtons(original, hide);
   const compared = await compareAnswer({ expected: type.expected, provided: typed ?? "", combining: type.combining });
   let block = `<div style="font-family: '${type.font}'; font-size: ${type.size}px">${compared.val}</div>`;
   if (hadHr) block = `<hr id=answer>${block}`;
-  return playButtons(html.replace(TYPE_ANSWER, () => block));
+  return playButtons(html.replace(TYPE_ANSWER, () => block), hide);
 }

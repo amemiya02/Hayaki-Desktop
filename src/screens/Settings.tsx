@@ -6,7 +6,7 @@ import { Check, ChevronRight, Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { Button, cn, Dialog, Segmented, Switch, TextField } from "@/components/ui";
+import { Button, cn, Dialog, Segmented, TextField } from "@/components/ui";
 import { firstLanguage, t, tr } from "@/lib/i18n";
 import { usePrefs } from "@/lib/prefs";
 import { createProfile } from "@/lib/profiles";
@@ -117,12 +117,6 @@ export function SettingsScreen() {
         </Section>
 
         <WindowSettings />
-
-        <Section title={t("settings.study")}>
-          <Row label={t("settings.autoplay")} hint={t("settings.autoplayHint")}>
-            <Switch label={t("settings.autoplay")} checked={prefs.autoplay} onChange={(v) => prefs.set("autoplay", v)} />
-          </Row>
-        </Section>
 
         <AnkiPreferencesSections />
         <BackupsSection />

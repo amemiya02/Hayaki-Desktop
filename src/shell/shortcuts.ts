@@ -9,6 +9,7 @@
 import { t, tr, trLabel } from "@/lib/i18n";
 import { ts } from "@/lib/strings/shell";
 import { SHORTCUTS, type ActionId } from "@/screens/browse/keys";
+import { STUDY_SHEET_ITEMS } from "@/screens/study/shortcut-items";
 
 export interface ShortcutItem {
   label: () => string;
@@ -197,7 +198,7 @@ export const SECTIONS: ShortcutSection[] = [
       { label: () => tr("studying-hard"), keys: ["2"] },
       { label: () => tr("studying-good"), keys: ["3", "Space"] },
       { label: () => tr("studying-easy"), keys: ["4"] },
-      { label: () => tr("undo-undo"), keys: ["Ctrl+Z"] },
+      { label: () => tr("undo-undo"), keys: ["Ctrl+Z", "U"] },
       { label: () => tr("undo-redo"), keys: [...GLOBAL_KEYS.redo] },
       { label: () => tr("studying-edit"), keys: ["E"] },
       { label: () => tr("actions-card-info"), keys: ["I"] },
@@ -209,6 +210,7 @@ export const SECTIONS: ShortcutSection[] = [
       { label: () => tr("actions-suspend-card"), keys: ["@"] },
       { label: () => tr("studying-suspend-note"), keys: ["!"] },
       { label: () => tr("studying-delete-note"), keys: ["Ctrl+Delete"] },
+      ...STUDY_SHEET_ITEMS,
       { label: () => ts("leaveStudy"), keys: ["Esc"] },
     ],
   },

@@ -1,42 +1,33 @@
 // Copyright: Hayaki contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-import {
-  ArrowLeft,
-  Ban,
-  BookmarkMinus,
-  Flag,
-  Info,
-  MoreHorizontal,
-  PauseCircle,
-  Pencil,
-  RotateCcw,
-  Star,
-  Trash2,
-  Undo2,
-  Volume2,
-} from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, FastForward, Flag, Star, Undo2, Volume2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CardFrame, type CardFrameContent, type CardFrameHandle, type ForwardedKey } from "@/components/CardFrame";
-import { Button, cn, IconButton, Kbd, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, onAccentKbd, SubMenu } from "@/components/ui";
-import * as core from "@/lib/anki/generated/core";
+import { Button, cn, IconButton, Kbd, onAccentKbd, Tooltip } from "@/components/ui";
 import { QueuedCards_Queue } from "@/lib/anki/proto/anki/scheduler_pb";
+import { onCollectionChange } from "@/lib/anki/transport";
 import { direction, firstLanguage, t, tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { cardFrameVars, usePrefs } from "@/lib/prefs";
+import { tstudy } from "@/lib/strings/study";
 import { useResolvedAppearance } from "@/lib/useAppearance";
 import { playTags, stopAudio } from "@/lib/study/audio";
 import { Rating, useSession } from "@/lib/study/session";
-import { isImageOcclusion } from "@/components/editor/markup";
-import { openCardInfo } from "@/screens/card-info";
 
 import { handleWindowChord } from "@/shell/WindowHost";
 
 import { Finished } from "./Finished";
+import { AnswerTimer } from "./study/AnswerTimer";
+import { EditCurrentDialog, ForgetDialog, SetDueDialog, TimeboxDialog } from "./study/dialogs";
+import { commandFor, STUDY_KEYS } from "./study/keys";
+import { flagColors, flagNames, StudyMenu } from "./study/StudyMenu";
+import { useAutoAdvance } from "./study/useAutoAdvance";
+import { answerCard, replayAudio, useStudyCommands, type StudyDialog } from "./study/useStudyCommands";
+import { RecordVoiceDialog } from "./study/VoiceRecorder";
 
 const answers = [
   { rating: Rating.AGAIN, key: "1", label: () => tr("studying-again"), color: "text-again" },
@@ -44,27 +35,6 @@ const answers = [
   { rating: Rating.GOOD, key: "3", label: () => tr("studying-good"), color: "text-good" },
   { rating: Rating.EASY, key: "4", label: () => tr("studying-easy"), color: "text-easy" },
 ];
-
-const flagColors = ["", "var(--flag-1)", "var(--flag-2)", "var(--flag-3)", "var(--flag-4)", "var(--flag-5)", "var(--flag-6)", "var(--flag-7)"];
-const flagNames = () => [
-  "",
-  tr("actions-flag-red"),
-  tr("actions-flag-orange"),
-  tr("actions-flag-green"),
-  tr("actions-flag-blue"),
-  tr("actions-flag-pink"),
-  tr("actions-flag-turquoise"),
-  tr("actions-flag-purple"),
-];
-
-/**
- * Anki's own review preferences (Preferences > Review): next intervals on the
- * answer buttons and the remaining counts. Any collection change refreshes them.
- */
-function useReviewPrefs() {
-  const { data } = useQuery({ queryKey: ["preferences", "reviewing"], queryFn: async () => (await core.getPreferences()).reviewing ?? null });
-  return { showIntervals: data?.showIntervalsOnButtons ?? true, showRemaining: data?.showRemainingDueCounts ?? true };
-}
 
 function StudyCounts() {
   const counts = useSession((s) => s.counts);
@@ -93,15 +63,34 @@ function StudyCounts() {
   );
 }
 
+/** Shown while auto advance runs, so a Card moving on by itself never surprises. */
+function AutoAdvanceBadge({ onTurnOff }: { onTurnOff: () => void }) {
+  const on = useSession((s) => s.autoAdvance);
+  if (!on) return null;
+  return (
+    <Tooltip content={`${tstudy("autoAdvanceOn")} (${STUDY_KEYS.toggleAutoAdvance})`}>
+      <button
+        type="button"
+        aria-pressed
+        onClick={onTurnOff}
+        className="me-1 flex h-7 items-center gap-1 rounded-full bg-accent-soft px-2.5 text-caption font-medium text-accent-ink transition-colors duration-[var(--dur-fast)] hover:bg-[color-mix(in_oklab,var(--accent)_22%,transparent)]"
+      >
+        <FastForward className="size-3.5" aria-hidden />
+        {tr("actions-auto-advance")}
+      </button>
+    </Tooltip>
+  );
+}
+
 export function StudyScreen({ deckId }: { deckId: bigint | null }) {
   const back = useNav((s) => s.back);
   const go = useNav((s) => s.go);
   const theme = usePrefs((s) => s.theme);
-  const autoplay = usePrefs((s) => s.autoplay);
-  const { showIntervals, showRemaining } = useReviewPrefs();
   const resolved = useResolvedAppearance();
   const night = resolved !== "light";
   const frameRef = useRef<CardFrameHandle>(null);
+  const [dialog, setDialog] = useState<StudyDialog | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const s = useSession();
 
@@ -119,149 +108,71 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
   const content = useMemo<CardFrameContent | null>(() => {
     const r = s.rendered;
     if (!r) return null;
-    const html = s.phase === "answer" && s.answerHtml !== null ? s.answerHtml : r.question;
+    // The answer stays up while the next Card loads and behind the timebox notice.
+    const answerSide = s.phase !== "question" && s.answerHtml !== null;
     return {
-      html,
+      html: answerSide ? s.answerHtml! : r.question,
       css: r.css,
       bodyClass: night ? r.bodyClass.includes("nightMode") ? r.bodyClass : `${r.bodyClass} nightMode night_mode` : r.bodyClass.replace(/\s*nightMode night_mode/, ""),
-      side: s.phase === "answer" ? "answer" : "question",
+      side: answerSide ? "answer" : "question",
       frame: { dark: night, vars: cardFrameVars(theme, resolved), dir: direction(), lang: firstLanguage() },
       flag: s.flag,
       marked: s.marked,
     };
   }, [s.rendered, s.phase, s.answerHtml, night, theme, resolved, s.flag, s.marked]);
 
-  // Autoplay each side's sounds as it appears.
+  // Each side's sounds play as it appears when the preset allows; otherwise the
+  // side still clears what was playing, as Anki's player does.
   const lastPlayed = useRef<string>("");
   useEffect(() => {
     const r = s.rendered;
-    if (!r || !autoplay) return;
-    const key = `${r.cardId}:${s.phase}`;
+    if (!r || (s.phase !== "question" && s.phase !== "answer")) return;
+    const key = `${r.cardId}:${s.shownAt}:${s.phase}`;
     if (key === lastPlayed.current) return;
-    if (s.phase === "question") {
-      lastPlayed.current = key;
-      void playTags(r.questionAv);
-    } else if (s.phase === "answer") {
-      lastPlayed.current = key;
-      void playTags(r.answerAv);
-    }
-  }, [s.rendered, s.phase, autoplay]);
+    lastPlayed.current = key;
+    const tags = s.phase === "question" ? r.questionAv : r.answerAv;
+    void playTags(s.config.autoplay ? tags : [], { interrupt: s.prefs.interruptAudio });
+  }, [s.rendered, s.phase, s.shownAt, s.config.autoplay, s.prefs.interruptAudio]);
 
   const reveal = useCallback(async () => {
     const typed = useSession.getState().rendered?.typeAnswer ? await frameRef.current?.typedAnswer() : null;
     await useSession.getState().reveal(typed ?? null);
   }, []);
 
-  const replay = useCallback(() => {
-    const st = useSession.getState();
-    const r = st.rendered;
-    if (!r) return;
-    void playTags(st.phase === "answer" ? r.answerAv : r.questionAv);
-  }, []);
+  const openMenu = useCallback(() => setMenuOpen(true), []);
+  const { run, autoAdvance } = useStudyCommands({ reveal, openDialog: setDialog, openMenu });
+  useAutoAdvance(autoAdvance);
 
   const playRef = useCallback((ref: string) => {
     const r = useSession.getState().rendered;
     if (!r) return;
     const [side, index] = ref.split(":");
     const tag = (side === "q" ? r.questionAv : r.answerAv)[Number(index)];
-    if (tag) void playTags([tag]);
+    if (tag) void playTags([tag], { interrupt: useSession.getState().prefs.interruptAudio });
   }, []);
 
-  const runAction = useCallback(
-    async (action: () => Promise<void>, message?: string) => {
-      try {
-        await action();
-        if (message) toast(message, { action: { label: tr("undo-undo"), onClick: () => void useSession.getState().undo() } });
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : String(error));
-      }
-    },
+  // Edits saved from Edit Current (or anywhere else) redraw the Card on the side it is on, as Anki does.
+  useEffect(
+    () =>
+      onCollectionChange(({ changes, origin }) => {
+        if (origin !== "study" && (changes.noteText || changes.note)) void useSession.getState().redraw();
+      }),
     [],
-  );
-
-  /** E edits the Note: Image Occlusion Notes on their image, others in Browse. */
-  const editNote = useCallback(
-    async (noteId: bigint) => {
-      try {
-        const note = await core.getNote({ nid: noteId });
-        const notetype = await core.getNotetype({ ntid: note.notetypeId });
-        if (isImageOcclusion(notetype)) return go({ name: "image-occlusion", mode: { kind: "edit", noteId } });
-      } catch {
-        // Fall back to Browse, which shows its own error if the Note is gone.
-      }
-      go({ name: "browse", search: `nid:${noteId}` });
-    },
-    [go],
   );
 
   const handleKey = useCallback(
     (e: ForwardedKey | KeyboardEvent): boolean => {
       // Full screen, zoom and redo, which keys from the Card page would otherwise never reach.
       if (handleWindowChord(e, "target" in e ? e.target : null)) return true;
-      const st = useSession.getState();
-      const mod = e.ctrlKey || e.metaKey;
-      if (e.key === "Escape") {
-        back();
-        return true;
-      }
-      if (mod && e.key.toLowerCase() === "z") {
-        void st.undo();
-        return true;
-      }
-      if (mod && /^[0-7]$/.test(e.key)) {
-        void st.setFlag(Number(e.key));
-        return true;
-      }
-      if (mod && (e.key === "Delete" || e.key === "Backspace")) {
-        void runAction(() => st.deleteNote(), tr("browsing-cards-deleted", { count: 1 }));
-        return true;
-      }
-      if (mod || e.altKey) return false;
-      if (st.phase === "question" && (e.key === " " || e.key === "Enter")) {
-        void reveal();
-        return true;
-      }
-      if (st.phase === "answer") {
-        if (e.key === " " || e.key === "Enter") {
-          void st.answer(Rating.GOOD);
-          return true;
-        }
-        const index = ["1", "2", "3", "4"].indexOf(e.key);
-        if (index >= 0) {
-          void st.answer(answers[index].rating);
-          return true;
-        }
-      }
-      switch (e.key) {
-        case "r":
-        case "F5":
-          replay();
-          return true;
-        case "*":
-          void st.toggleMark();
-          return true;
-        case "-":
-          void runAction(() => st.bury("card"), tr("studying-cards-buried", { count: 1 }));
-          return true;
-        case "=":
-          void runAction(() => st.bury("note"), tr("studying-cards-buried", { count: 1 }));
-          return true;
-        case "@":
-          void runAction(() => st.suspend("card"), tr("studying-card-suspended"));
-          return true;
-        case "!":
-          void runAction(() => st.suspend("note"), tr("studying-note-suspended"));
-          return true;
-        case "e":
-          if (st.queued?.card) void editNote(st.queued.card.noteId);
-          return true;
-        case "i":
-          if (st.queued?.card) openCardInfo(st.queued.card.id);
-          return true;
-      }
-      return false;
+      const phase = useSession.getState().phase;
+      const command = commandFor(e, phase);
+      if (!command) return false;
+      // The finished screen keeps only leaving and undo.
+      if (phase === "finished" && command.id !== "leave" && command.id !== "undo") return false;
+      run(command);
+      return true;
     },
-    [back, editNote, reveal, replay, runAction],
+    [run],
   );
 
   useEffect(() => {
@@ -274,6 +185,8 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
   }, [handleKey]);
+
+  const closeDialog = () => setDialog(null);
 
   const remaining = s.counts.newCount + s.counts.learningCount + s.counts.reviewCount;
   // The line starts full and drains as Cards leave the session.
@@ -299,75 +212,23 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
             </span>
           ))}
         </div>
-        {showRemaining && (
+        {s.prefs.showRemaining && (
           <div className="ms-3">
             <StudyCounts />
           </div>
         )}
         <div className="ml-auto flex items-center gap-0.5">
+          <AutoAdvanceBadge onTurnOff={() => run({ id: "toggleAutoAdvance" })} />
+          <AnswerTimer />
           {s.marked && <Star className="me-1 size-4 fill-marked text-marked" aria-label={tr("studying-mark-note")} />}
           {s.flag > 0 && <Flag className="mr-1 size-4" style={{ color: flagColors[s.flag], fill: flagColors[s.flag] }} aria-label={flagNames()[s.flag]} />}
-          <IconButton label={`${tr("actions-replay-audio")} (R)`} onClick={replay}>
+          <IconButton label={`${tr("actions-replay-audio")} (R)`} onClick={replayAudio}>
             <Volume2 />
           </IconButton>
           <IconButton label={`${t("study.undo")} (Ctrl+Z)`} disabled={!s.canUndo} onClick={() => void s.undo()}>
             <Undo2 />
           </IconButton>
-          <Menu>
-            <MenuTrigger asChild>
-              <IconButton label={t("study.more")}>
-                <MoreHorizontal />
-              </IconButton>
-            </MenuTrigger>
-            <MenuContent>
-              <MenuItem shortcut="E" onSelect={() => s.queued?.card && void editNote(s.queued.card.noteId)}>
-                <Pencil />
-                {tr("studying-edit")}
-              </MenuItem>
-              <SubMenu label={tr("studying-flag-card")} icon={<Flag />}>
-                {flagNames().slice(1).map((name, i) => (
-                  <MenuItem key={i} shortcut={`Ctrl+${i + 1}`} onSelect={() => void s.setFlag(i + 1)}>
-                    <Flag style={{ color: flagColors[i + 1], fill: s.flag === i + 1 ? flagColors[i + 1] : "none" }} />
-                    {name}
-                  </MenuItem>
-                ))}
-              </SubMenu>
-              <MenuItem shortcut="I" onSelect={() => s.queued?.card && openCardInfo(s.queued.card.id)}>
-                <Info />
-                {tr("actions-card-info")}
-              </MenuItem>
-              <MenuItem shortcut="*" onSelect={() => void s.toggleMark()}>
-                <Star />
-                {tr("studying-mark-note")}
-              </MenuItem>
-              <MenuSeparator />
-              <MenuItem shortcut="-" onSelect={() => void runAction(() => s.bury("card"), tr("studying-cards-buried", { count: 1 }))}>
-                <BookmarkMinus />
-                {tr("studying-bury-card")}
-              </MenuItem>
-              <MenuItem shortcut="=" onSelect={() => void runAction(() => s.bury("note"), tr("studying-cards-buried", { count: 1 }))}>
-                <BookmarkMinus />
-                {tr("studying-bury-note")}
-              </MenuItem>
-              <MenuItem shortcut="@" onSelect={() => void runAction(() => s.suspend("card"), tr("studying-card-suspended"))}>
-                <PauseCircle />
-                {tr("actions-suspend-card")}
-              </MenuItem>
-              <MenuItem shortcut="!" onSelect={() => void runAction(() => s.suspend("note"), tr("studying-note-suspended"))}>
-                <Ban />
-                {tr("studying-suspend-note")}
-              </MenuItem>
-              <MenuSeparator />
-              <MenuItem shortcut="R" onSelect={replay}>
-                <RotateCcw />
-                {tr("actions-replay-audio")}
-              </MenuItem>
-              <MenuItem danger shortcut="Ctrl+Del" onSelect={() => void runAction(() => s.deleteNote(), tr("browsing-cards-deleted", { count: 1 }))}>
-                <Trash2 />
-                {tr("studying-delete-note")}
-              </MenuItem>
-            </MenuContent>
-          </Menu>
+          <StudyMenu open={menuOpen} onOpenChange={setMenuOpen} run={run} />
         </div>
         <div className="absolute inset-x-0 bottom-0 h-[2px] bg-[color-mix(in_oklab,var(--accent)_22%,transparent)]" aria-hidden="true">
           <div
@@ -399,7 +260,7 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
               <motion.button
                 key={a.key}
                 type="button"
-                onClick={() => void s.answer(a.rating)}
+                onClick={() => void answerCard(a.rating)}
                 // Press sinks to 0.96 and settles back on a short spring; the answer itself is sent on click, never delayed.
                 whileTap={{ scale: 0.96 }}
                 transition={{ type: "spring", stiffness: 700, damping: 30, mass: 0.6 }}
@@ -411,7 +272,7 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
                 )}
                 style={{ animationDelay: `${i * 18}ms` }}
               >
-                {showIntervals && <span className="tabular text-caption font-medium text-ink-3">{s.intervals[i] ?? ""}</span>}
+                {s.prefs.showIntervals && <span className="tabular text-caption font-medium text-ink-3">{s.intervals[i] ?? ""}</span>}
                 <span className={cn("text-body font-semibold", a.color)}>{a.label()}</span>
                 <Kbd className="sr-only">{a.key}</Kbd>
               </motion.button>
@@ -443,6 +304,20 @@ export function StudyScreen({ deckId }: { deckId: bigint | null }) {
           ))}
         </div>
       </footer>
+
+      {s.phase === "timebox" && s.timeboxNotice && (
+        <TimeboxDialog notice={s.timeboxNotice} onContinue={() => void s.continueAfterTimebox()} onFinish={() => go({ name: "decks" })} />
+      )}
+      {dialog?.kind === "setDue" && <SetDueDialog onClose={closeDialog} onSubmit={(days) => s.setDueDate(days).then(() => doneToast("scheduling-set-due-date-done"))} />}
+      {dialog?.kind === "forget" && (
+        <ForgetDialog onClose={closeDialog} onSubmit={(restore, reset) => s.forget(restore, reset).then(() => doneToast("scheduling-forgot-cards"))} />
+      )}
+      {dialog?.kind === "edit" && <EditCurrentDialog noteId={dialog.noteId} onClose={closeDialog} />}
+      {dialog?.kind === "record" && <RecordVoiceDialog onClose={closeDialog} />}
     </div>
   );
+}
+
+function doneToast(key: string): void {
+  toast(tr(key, { cards: 1 }), { action: { label: tr("undo-undo"), onClick: () => void useSession.getState().undo() } });
 }

@@ -18,7 +18,7 @@ import { SortOrderSchema } from "@/lib/anki/proto/anki/search_pb";
 import { tr } from "@/lib/i18n";
 import { useNav } from "@/lib/nav";
 import { tb } from "@/lib/strings/browse";
-import { setAddPrefill } from "@/screens/add/prefill";
+import { openAddCopy } from "@/screens/add/prefill";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 
 import type { Mode } from "./config";
@@ -200,14 +200,7 @@ export function useBrowseActions(ctx: Omit<ActionContext, "run">, current: Curre
         case "createCopy": {
           // Anki copies the current Note into Add, in the Deck the current Card is from.
           if (!current?.card) break;
-          const note = await core.getNote({ nid: current.noteId! });
-          setAddPrefill({
-            notetypeId: note.notetypeId,
-            deckId: current.card.originalDeckId || current.card.deckId,
-            fields: [...note.fields],
-            tags: [...note.tags],
-          });
-          go({ name: "add" });
+          await openAddCopy(current.noteId!, current.card.originalDeckId || current.card.deckId);
           break;
         }
         case "preview": {

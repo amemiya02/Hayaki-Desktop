@@ -2,24 +2,38 @@
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
 /**
- * One study session against the core's v3 queue. The current Card is shown
- * from a render made while the previous Card was on screen whenever the queue
- * agrees, so an answer reaches the next question without waiting on the core.
+ * One study session against the core's v3 queue, as Anki's `Reviewer` runs
+ * it. The current Card is shown from a render made while the previous Card
+ * was on screen whenever the queue agrees, so an answer reaches the next
+ * question without waiting on the core.
+ *
+ * The phase is the session's one state machine: loading → question → answer
+ * → loading, with `timebox` holding the next Card back while the timebox
+ * notice is open, and `finished` once the queue is empty.
  */
 import { create } from "zustand";
 
 import * as core from "../anki/generated/core";
 import { CardAnswer_Rating } from "../anki/proto/anki/scheduler_pb";
-import type { QueuedCards_QueuedCard } from "../anki/proto/anki/scheduler_pb";
-import { BuryOrSuspendCardsRequest_Mode } from "../anki/proto/anki/scheduler_pb";
+import type { QueuedCards_QueuedCard, SchedulingState } from "../anki/proto/anki/scheduler_pb";
+import { BuryOrSuspendCardsRequest_Mode, ScheduleCardsAsNewRequest_Context } from "../anki/proto/anki/scheduler_pb";
+import { ConfigKey_String } from "../anki/proto/anki/config_pb";
 import { renderAnswer, renderCard, type RenderedCard } from "./render";
+import { DEFAULT_REVIEW_CONFIG, reviewConfigOf, reviewPrefsOf, type ReviewConfig, type ReviewPrefs } from "./review-config";
+import { timeboxReached, type Timebox, type TimeboxReached } from "./review-flow";
 
-export type Phase = "loading" | "question" | "answer" | "finished";
+export type Phase = "loading" | "question" | "answer" | "timebox" | "finished";
 
 export interface Counts {
   newCount: number;
   learningCount: number;
   reviewCount: number;
+}
+
+/** What the reviewer tells the person after an answer (Anki's leech tooltip). */
+export interface AnswerOutcome {
+  leech: boolean;
+  suspended: boolean;
 }
 
 interface SessionState {
@@ -28,57 +42,85 @@ interface SessionState {
   queued: QueuedCards_QueuedCard | null;
   rendered: RenderedCard | null;
   answerHtml: string | null;
+  /** What was typed into a type-in answer, kept so a redraw compares it again. */
+  typed: string | null;
   counts: Counts;
   /** Next intervals for Again, Hard, Good and Easy, as the core describes them. */
   intervals: string[];
-  /** Cards answered in this session, for the progress line. */
+  /** Cards answered in this session, for the progress line and the timebox. */
   answered: number;
+  /** When the question appeared (`performance.now()`); the answer timer starts here. */
   shownAt: number;
-  capMs: number;
+  /** When the answer appeared, or null on the question side. */
+  revealedAt: number | null;
+  /** The current Card's preset, as the reviewer reads it. */
+  config: ReviewConfig;
+  prefs: ReviewPrefs;
   marked: boolean;
   flag: number;
   error: string | null;
   canUndo: boolean;
+  /** The Card shown before this one, for Previous Card Info. */
+  previousCardId: bigint | null;
+  /** Shift+A; off whenever a session starts, as in Anki. */
+  autoAdvance: boolean;
+  timebox: Timebox;
+  /** Set while the phase is `timebox`. */
+  timeboxNotice: TimeboxReached | null;
 }
 
 interface SessionActions {
   start(deckId: bigint | null, nightMode: boolean): Promise<void>;
   reveal(typed: string | null): Promise<void>;
-  answer(rating: CardAnswer_Rating): Promise<void>;
+  answer(rating: CardAnswer_Rating): Promise<AnswerOutcome | null>;
   undo(): Promise<void>;
   reload(): Promise<void>;
+  /** Renders the current Card again after its Note changed, on the side it was on. */
+  redraw(): Promise<void>;
   setFlag(flag: number): Promise<void>;
   toggleMark(): Promise<void>;
   bury(scope: "card" | "note"): Promise<void>;
   suspend(scope: "card" | "note"): Promise<void>;
+  forget(restorePosition: boolean, resetCounts: boolean): Promise<void>;
+  setDueDate(days: string): Promise<void>;
   deleteNote(): Promise<void>;
   setNightMode(nightMode: boolean): void;
+  /** Returns whether auto advance is now on. */
+  toggleAutoAdvance(): boolean;
+  setAutoAdvance(on: boolean): void;
+  /** Starts a new timebox and shows the next Card. */
+  continueAfterTimebox(): Promise<void>;
 }
 
 let nightMode = false;
 let prerendered: RenderedCard | null = null;
-const capCache = new Map<bigint, number>();
+const configCache = new Map<bigint, ReviewConfig>();
 
-async function answerCap(deckId: bigint): Promise<number> {
-  const cached = capCache.get(deckId);
-  if (cached !== undefined) return cached;
-  let cap = 60_000;
+/** The preset of the Deck a Card belongs to (its home Deck when in a filtered Deck). */
+async function reviewConfig(deckId: bigint): Promise<ReviewConfig> {
+  const cached = configCache.get(deckId);
+  if (cached) return cached;
+  let config = DEFAULT_REVIEW_CONFIG;
   try {
     const deck = await core.getDeck({ did: deckId });
     if (deck.kind.case === "normal") {
-      const config = await core.getDeckConfig({ dcid: deck.kind.value.configId });
-      cap = (config.config?.capAnswerTimeToSecs || 60) * 1000;
+      config = reviewConfigOf((await core.getDeckConfig({ dcid: deck.kind.value.configId })).config);
     }
   } catch {
-    // A filtered Deck has no preset of its own; Anki's default cap applies.
+    // Anki's defaults apply when the preset cannot be read.
   }
-  capCache.set(deckId, cap);
-  return cap;
+  configCache.set(deckId, config);
+  return config;
 }
 
 const emptyCounts: Counts = { newCount: 0, learningCount: 0, reviewCount: 0 };
+const ORIGIN = { origin: "study" };
 
 export const useSession = create<SessionState & SessionActions>((set, get) => {
+  function renderOptions() {
+    return { hidePlayButtons: get().prefs.hidePlayButtons };
+  }
+
   async function load(): Promise<void> {
     try {
       const queue = await core.getQueuedCards({ fetchLimit: 2, intradayLearningOnly: false });
@@ -90,29 +132,41 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
       const undoStatus = await core.getUndoStatus();
       const canUndo = !!undoStatus.undo;
       const [first, second] = queue.cards;
+      const shownId = get().queued?.card?.id ?? null;
       if (!first?.card) {
         prerendered = null;
-        set({ phase: "finished", queued: null, rendered: null, answerHtml: null, counts, canUndo });
+        set({
+          phase: "finished",
+          queued: null,
+          rendered: null,
+          answerHtml: null,
+          counts,
+          canUndo,
+          previousCardId: shownId ?? get().previousCardId,
+        });
         return;
       }
       const card = first.card;
       const rendered =
-        prerendered && prerendered.cardId === card.id ? prerendered : await renderCard(card, nightMode);
+        prerendered && prerendered.cardId === card.id ? prerendered : await renderCard(card, nightMode, renderOptions());
       const intervals = first.states ? (await core.describeNextStates(first.states)).vals : [];
-      const capMs = await answerCap(card.originalDeckId || card.deckId);
+      const config = await reviewConfig(card.originalDeckId || card.deckId);
       set({
         phase: "question",
         queued: first,
         rendered,
         answerHtml: null,
+        typed: null,
         counts,
         intervals,
-        capMs,
+        config,
         shownAt: performance.now(),
+        revealedAt: null,
         marked: false,
         flag: card.flags & 0b111,
         error: null,
         canUndo,
+        previousCardId: shownId !== null && shownId !== card.id ? shownId : get().previousCardId,
       });
       void markedState(card.noteId).then((marked) => {
         if (get().queued?.card?.id === card.id) set({ marked });
@@ -120,8 +174,7 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
       // Render the following Card now, so answering this one feels instant.
       prerendered = null;
       if (second?.card) {
-        const next = second.card;
-        renderCard(next, nightMode)
+        renderCard(second.card, nightMode, renderOptions())
           .then((r) => {
             prerendered = r;
           })
@@ -142,33 +195,93 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
     return card ? { cardId: card.id, noteId: card.noteId } : null;
   }
 
+  /** Runs an operation that changes the queue, then shows whatever comes next. */
+  async function changeQueue(op: (ids: { cardId: bigint; noteId: bigint }) => Promise<unknown>): Promise<void> {
+    const ids = currentIds();
+    if (!ids) return;
+    await op(ids);
+    prerendered = null;
+    await load();
+  }
+
+  async function buryOrSuspend(scope: "card" | "note", mode: BuryOrSuspendCardsRequest_Mode): Promise<void> {
+    await changeQueue((ids) =>
+      core.buryOrSuspendCards(
+        { cardIds: scope === "card" ? [ids.cardId] : [], noteIds: scope === "note" ? [ids.noteId] : [], mode },
+        ORIGIN,
+      ),
+    );
+  }
+
   return {
     phase: "loading",
     deckId: null,
     queued: null,
     rendered: null,
     answerHtml: null,
+    typed: null,
     counts: emptyCounts,
     intervals: [],
     answered: 0,
     shownAt: 0,
-    capMs: 60_000,
+    revealedAt: null,
+    config: DEFAULT_REVIEW_CONFIG,
+    prefs: reviewPrefsOf(undefined),
     marked: false,
     flag: 0,
     error: null,
     canUndo: false,
+    previousCardId: null,
+    autoAdvance: false,
+    timebox: { startedAt: Date.now(), startReps: 0 },
+    timeboxNotice: null,
 
     async start(deckId, night) {
       nightMode = night;
       prerendered = null;
-      set({ phase: "loading", deckId, answered: 0, error: null });
-      if (deckId !== null) await core.setCurrentDeck({ did: deckId }, { origin: "study" });
+      // Presets may have changed since the last session (Options opens from here).
+      configCache.clear();
+      set({
+        phase: "loading",
+        deckId,
+        queued: null,
+        answered: 0,
+        error: null,
+        previousCardId: null,
+        autoAdvance: false,
+        timebox: { startedAt: Date.now(), startReps: 0 },
+        timeboxNotice: null,
+      });
+      try {
+        set({ prefs: reviewPrefsOf((await core.getPreferences()).reviewing) });
+      } catch {
+        // Anki's defaults apply.
+      }
+      if (deckId !== null) await core.setCurrentDeck({ did: deckId }, ORIGIN);
       await load();
     },
 
     async reload() {
       prerendered = null;
       await load();
+    },
+
+    async redraw() {
+      const { queued, phase, typed } = get();
+      if (!queued?.card || (phase !== "question" && phase !== "answer")) return;
+      try {
+        const card = await core.getCard({ cid: queued.card.id });
+        const rendered = await renderCard(card, nightMode, renderOptions());
+        const answerHtml = phase === "answer" ? await renderAnswer(rendered, typed) : null;
+        const marked = await markedState(card.noteId);
+        if (get().queued?.card?.id !== card.id || get().phase !== phase) return;
+        prerendered = null;
+        set({ rendered, answerHtml, marked, flag: card.flags & 0b111 });
+      } catch {
+        // The Card or its Note is gone: show what the queue offers now.
+        prerendered = null;
+        await load();
+      }
     },
 
     setNightMode(night) {
@@ -182,38 +295,59 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
       const { rendered, phase } = get();
       if (!rendered || phase !== "question") return;
       const answerHtml = await renderAnswer(rendered, typed);
-      set({ phase: "answer", answerHtml });
+      if (get().rendered !== rendered || get().phase !== "question") return;
+      set({ phase: "answer", answerHtml, typed, revealedAt: performance.now() });
     },
 
     async answer(rating) {
-      const { queued, phase, shownAt, capMs, answered } = get();
-      if (!queued?.card || !queued.states || phase !== "answer") return;
+      const { queued, phase, shownAt, config, answered } = get();
+      if (!queued?.card || !queued.states || phase !== "answer") return null;
+      const card = queued.card;
       const states = queued.states;
       const newState = [states.again, states.hard, states.good, states.easy][rating];
       set({ phase: "loading" });
-      await core.answerCard(
-        {
-          cardId: queued.card.id,
-          currentState: states.current,
-          newState,
-          rating,
-          answeredAtMillis: BigInt(Date.now()),
-          millisecondsTaken: Math.min(Math.round(performance.now() - shownAt), capMs),
-        },
-        { origin: "study" },
-      );
-      set({ answered: answered + 1 });
+      try {
+        await core.answerCard(
+          {
+            cardId: card.id,
+            currentState: states.current,
+            newState,
+            rating,
+            answeredAtMillis: BigInt(Date.now()),
+            millisecondsTaken: Math.min(Math.round(performance.now() - shownAt), config.capMs),
+          },
+          ORIGIN,
+        );
+      } catch (error) {
+        set({ phase: "answer" });
+        throw error;
+      }
+      const reps = answered + 1;
+      set({ answered: reps });
+      const outcome = await leechOutcome(card.id, newState);
+      const reached = timeboxReached(get().timebox, get().prefs.timeLimitSecs, Date.now(), reps);
+      if (reached) {
+        set({ phase: "timebox", timeboxNotice: reached });
+      } else {
+        await load();
+      }
+      return outcome;
+    },
+
+    async continueAfterTimebox() {
+      if (get().phase !== "timebox") return;
+      set({ phase: "loading", timeboxNotice: null, timebox: { startedAt: Date.now(), startReps: get().answered } });
       await load();
     },
 
     async undo() {
       try {
-        await core.undo({ origin: "study" });
+        await core.undo(ORIGIN);
       } catch {
         return;
       }
       prerendered = null;
-      set({ answered: Math.max(0, get().answered - 1) });
+      set({ answered: Math.max(0, get().answered - 1), timeboxNotice: null });
       await load();
     },
 
@@ -221,7 +355,7 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
       const ids = currentIds();
       if (!ids) return;
       const next = get().flag === flag ? 0 : flag;
-      await core.setFlag({ cardIds: [ids.cardId], flag: next }, { origin: "study" });
+      await core.setFlag({ cardIds: [ids.cardId], flag: next }, ORIGIN);
       set({ flag: next });
     },
 
@@ -230,49 +364,56 @@ export const useSession = create<SessionState & SessionActions>((set, get) => {
       if (!ids) return;
       const marked = get().marked;
       const request = { noteIds: [ids.noteId], tags: "marked" };
-      if (marked) await core.removeNoteTags(request, { origin: "study" });
-      else await core.addNoteTags(request, { origin: "study" });
+      if (marked) await core.removeNoteTags(request, ORIGIN);
+      else await core.addNoteTags(request, ORIGIN);
       set({ marked: !marked });
     },
 
-    async bury(scope) {
-      const ids = currentIds();
-      if (!ids) return;
-      await core.buryOrSuspendCards(
-        {
-          cardIds: scope === "card" ? [ids.cardId] : [],
-          noteIds: scope === "note" ? [ids.noteId] : [],
-          mode: BuryOrSuspendCardsRequest_Mode.BURY_USER,
-        },
-        { origin: "study" },
-      );
-      prerendered = null;
-      await load();
+    bury: (scope) => buryOrSuspend(scope, BuryOrSuspendCardsRequest_Mode.BURY_USER),
+    suspend: (scope) => buryOrSuspend(scope, BuryOrSuspendCardsRequest_Mode.SUSPEND),
+
+    forget: (restorePosition, resetCounts) =>
+      changeQueue((ids) =>
+        core.scheduleCardsAsNew(
+          {
+            cardIds: [ids.cardId],
+            log: true,
+            restorePosition,
+            resetCounts,
+            context: ScheduleCardsAsNewRequest_Context.REVIEWER,
+          },
+          ORIGIN,
+        ),
+      ),
+
+    setDueDate: (days) =>
+      changeQueue((ids) =>
+        core.setDueDate({ cardIds: [ids.cardId], days, configKey: { key: ConfigKey_String.SET_DUE_REVIEWER } }, ORIGIN),
+      ),
+
+    deleteNote: () => changeQueue((ids) => core.removeNotes({ noteIds: [ids.noteId], cardIds: [] }, ORIGIN)),
+
+    toggleAutoAdvance() {
+      const on = !get().autoAdvance;
+      set({ autoAdvance: on });
+      return on;
     },
 
-    async suspend(scope) {
-      const ids = currentIds();
-      if (!ids) return;
-      await core.buryOrSuspendCards(
-        {
-          cardIds: scope === "card" ? [ids.cardId] : [],
-          noteIds: scope === "note" ? [ids.noteId] : [],
-          mode: BuryOrSuspendCardsRequest_Mode.SUSPEND,
-        },
-        { origin: "study" },
-      );
-      prerendered = null;
-      await load();
-    },
-
-    async deleteNote() {
-      const ids = currentIds();
-      if (!ids) return;
-      await core.removeNotes({ noteIds: [ids.noteId], cardIds: [] }, { origin: "study" });
-      prerendered = null;
-      await load();
+    setAutoAdvance(on) {
+      set({ autoAdvance: on });
     },
   };
 });
+
+/** Anki's `state_is_leech`, and whether the leech action suspended the Card. */
+async function leechOutcome(cardId: bigint, newState: SchedulingState | undefined): Promise<AnswerOutcome> {
+  try {
+    if (!newState || !(await core.stateIsLeech(newState)).val) return { leech: false, suspended: false };
+    const card = await core.getCard({ cid: cardId });
+    return { leech: true, suspended: card.queue < 0 };
+  } catch {
+    return { leech: false, suspended: false };
+  }
+}
 
 export { CardAnswer_Rating as Rating };
