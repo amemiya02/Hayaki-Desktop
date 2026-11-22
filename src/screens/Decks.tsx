@@ -1,13 +1,12 @@
 // Copyright: Hayaki contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-import { ChevronRight, Download, FileText, Filter, FolderInput, FolderPlus, MoreHorizontal, Pencil, Play, Settings2, Trash2, Upload } from "lucide-react";
+import { ChevronRight, Download, Filter, FolderPlus, MoreHorizontal, Play } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { toast } from "sonner";
 
 import { Count } from "@/components/Count";
 import { LifecycleBar } from "@/components/LifecycleBar";
-import { Button, cn, Dialog, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, TextField } from "@/components/ui";
+import { Button, cn, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui";
 import * as core from "@/lib/anki/generated/core";
 import type { DeckTreeNode } from "@/lib/anki/proto/anki/decks_pb";
 import { SetDeckCollapsedRequest_Scope } from "@/lib/anki/proto/anki/decks_pb";
@@ -16,33 +15,16 @@ import { importPackage } from "@/lib/import";
 import { useNav } from "@/lib/nav";
 import { findDeck, getDeckTree, leafName, totals, useCurrentDeck, useDeckTree, useStudiedToday } from "@/lib/queries";
 import { td } from "@/lib/strings/decks";
-import { DeckDescriptionDialog } from "@/screens/decks/DeckDescriptionDialog";
+import { CtxContent, CtxItem, CtxRoot, CtxSeparator, CtxTrigger } from "@/screens/browse/menus";
+import { DeckMenuItems, NameDialog, removeDeck, useDeckDialogs } from "@/screens/decks/actions";
 import { deckDragHandlers, useDeckDrag, useDropTarget } from "@/screens/decks/drag";
-import { MoveDeckDialog } from "@/screens/decks/MoveDeckDialog";
 import { TOP_LEVEL } from "@/screens/decks/model";
 import { openFilteredDeck } from "@/screens/filtered";
-import { useExport } from "@/shell/ExportDialog";
 import { Expand } from "@/shell/Sidebar";
 
 const COLS = "grid grid-cols-[minmax(0,1fr)_72px_72px_72px_76px] items-center";
 
-function DeckRow({
-  node,
-  depth,
-  currentId,
-  onRename,
-  onDelete,
-  onMove,
-  onDescribe,
-}: {
-  node: DeckTreeNode;
-  depth: number;
-  currentId: bigint | undefined;
-  onRename: (node: DeckTreeNode) => void;
-  onDelete: (node: DeckTreeNode) => void;
-  onMove: (node: DeckTreeNode) => void;
-  onDescribe: (node: DeckTreeNode) => void;
-}) {
+function DeckRow({ node, depth, currentId }: { node: DeckTreeNode; depth: number; currentId: bigint | undefined }) {
   const drop = useDropTarget(node.deckId);
   const go = useNav((s) => s.go);
   const hasChildren = node.children.length > 0;
@@ -55,105 +37,89 @@ function DeckRow({
       { origin: "decks" },
     );
 
+  const onMove = useDeckDialogs((s) => s.move);
+
   return (
     <>
-      <div
-        role="row"
-        tabIndex={0}
-        data-deck-drop={String(node.deckId)}
-        {...deckDragHandlers(node, getDeckTree)}
-        onDoubleClick={() => go({ name: "study", deckId: node.deckId })}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") go({ name: "study", deckId: node.deckId });
-          if (e.key === "ArrowRight" && hasChildren && node.collapsed) toggle();
-          if (e.key === "ArrowLeft" && hasChildren && !node.collapsed) toggle();
-          if (e.key.toLowerCase() === "m" && !e.ctrlKey && !e.metaKey && !e.altKey && e.target === e.currentTarget) onMove(node);
-        }}
-        className={cn(
-          COLS,
-          "group relative px-3 outline-none transition-colors duration-[var(--dur-fast)]",
-          depth === 0 ? "h-11" : "h-10",
-          "hover:bg-surface-2 focus-visible:bg-accent-softer focus-visible:outline-none",
-          drop.isSource && "opacity-45",
-          drop.dragging && !drop.over && "hover:bg-transparent",
-          drop.valid && "bg-accent-soft shadow-ring-inset hover:bg-accent-soft",
-          drop.over && !drop.valid && "cursor-not-allowed",
-        )}
-      >
-        <div className="flex min-w-0 items-center gap-1" style={{ paddingLeft: depth * 22 }}>
-          {hasChildren ? (
-            <button
-              data-no-drag
-              aria-label={node.collapsed ? "Expand" : "Collapse"}
-              aria-expanded={!node.collapsed}
-              onClick={toggle}
-              className="grid size-6 shrink-0 place-items-center rounded-[6px] text-ink-3 hover:bg-surface-3 hover:text-ink"
-            >
-              <ChevronRight
-                className={cn("size-4 transition-transform duration-[var(--dur)] ease-out", !node.collapsed && "rotate-90")}
-              />
-            </button>
-          ) : (
-            <span className="size-6 shrink-0" />
-          )}
-          <button
-            onClick={() => go({ name: "deck", deckId: node.deckId })}
+      <CtxRoot>
+        <CtxTrigger asChild>
+          <div
+            role="row"
+            tabIndex={0}
+            data-deck-drop={String(node.deckId)}
+            {...deckDragHandlers(node, getDeckTree)}
+            onDoubleClick={() => go({ name: "study", deckId: node.deckId })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") go({ name: "study", deckId: node.deckId });
+              if (e.key === "ArrowRight" && hasChildren && node.collapsed) toggle();
+              if (e.key === "ArrowLeft" && hasChildren && !node.collapsed) toggle();
+              if (e.key.toLowerCase() === "m" && !e.ctrlKey && !e.metaKey && !e.altKey && e.target === e.currentTarget) onMove(node);
+              if (e.key === "Delete" && e.target === e.currentTarget) void removeDeck(node, "decks");
+            }}
             className={cn(
-              "min-w-0 truncate rounded-[5px] px-1 text-left text-body hover:underline hover:underline-offset-4 hover:decoration-line-strong",
-              depth === 0 ? "font-medium text-ink" : "text-ink",
-              node.filtered && "text-accent-ink",
+              COLS,
+              "group relative px-3 outline-none transition-colors duration-[var(--dur-fast)]",
+              depth === 0 ? "h-11" : "h-10",
+              "hover:bg-surface-2 focus-visible:bg-accent-softer focus-visible:outline-none",
+              drop.isSource && "opacity-45",
+              drop.dragging && !drop.over && "hover:bg-transparent",
+              drop.valid && "bg-accent-soft shadow-ring-inset hover:bg-accent-soft",
+              drop.over && !drop.valid && "cursor-not-allowed",
             )}
-            title={node.name}
           >
-            {leafName(node.name)}
-          </button>
-          {isCurrent && <span aria-label="Current Deck" className="ml-1.5 size-1.5 shrink-0 rounded-full bg-accent" />}
-        </div>
-        <Count value={node.newCount} kind="new" />
-        <Count value={node.learnCount} kind="learn" />
-        <Count value={node.reviewCount} kind="due" />
-        <div data-no-drag className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:opacity-100 group-focus-within:opacity-100">
-          <IconButton label={tr("decks-study")} size="sm" disabled={due === 0} onClick={() => go({ name: "study", deckId: node.deckId })}>
-            <Play />
-          </IconButton>
-          <Menu>
-            <MenuTrigger asChild>
-              <IconButton label={t("study.more")} size="sm">
-                <MoreHorizontal />
-              </IconButton>
-            </MenuTrigger>
-            <MenuContent>
-              <MenuItem onSelect={() => go({ name: "deck-options", deckId: node.deckId })}>
-                <Settings2 />
-                {tr("actions-options")}
-              </MenuItem>
-              <MenuItem onSelect={() => useExport.getState().show(node.deckId)}>
-                <Upload />
-                {trLabel("qt-accel-export")}
-              </MenuItem>
-              <MenuItem onSelect={() => onRename(node)}>
-                <Pencil />
-                {tr("actions-rename")}
-              </MenuItem>
-              <MenuItem shortcut="M" onSelect={() => onMove(node)}>
-                <FolderInput />
-                {td("moveTo")}
-              </MenuItem>
-              {!node.filtered && (
-                <MenuItem onSelect={() => onDescribe(node)}>
-                  <FileText />
-                  {tr("scheduling-description")}
-                </MenuItem>
+            <div className="flex min-w-0 items-center gap-1" style={{ paddingLeft: depth * 22 }}>
+              {hasChildren ? (
+                <button
+                  data-no-drag
+                  aria-label={node.collapsed ? "Expand" : "Collapse"}
+                  aria-expanded={!node.collapsed}
+                  onClick={toggle}
+                  className="grid size-6 shrink-0 place-items-center rounded-[6px] text-ink-3 hover:bg-surface-3 hover:text-ink"
+                >
+                  <ChevronRight
+                    className={cn("size-4 transition-transform duration-[var(--dur)] ease-out", !node.collapsed && "rotate-90")}
+                  />
+                </button>
+              ) : (
+                <span className="size-6 shrink-0" />
               )}
-              <MenuSeparator />
-              <MenuItem danger onSelect={() => onDelete(node)}>
-                <Trash2 />
-                {tr("actions-delete")}
-              </MenuItem>
-            </MenuContent>
-          </Menu>
-        </div>
-      </div>
+              <button
+                onClick={() => go({ name: "deck", deckId: node.deckId })}
+                className={cn(
+                  "min-w-0 truncate rounded-[5px] px-1 text-left text-body hover:underline hover:underline-offset-4 hover:decoration-line-strong",
+                  depth === 0 ? "font-medium text-ink" : "text-ink",
+                  node.filtered && "text-accent-ink",
+                )}
+                title={node.name}
+              >
+                {leafName(node.name)}
+              </button>
+              {isCurrent && <span aria-label="Current Deck" className="ml-1.5 size-1.5 shrink-0 rounded-full bg-accent" />}
+            </div>
+            <Count value={node.newCount} kind="new" />
+            <Count value={node.learnCount} kind="learn" />
+            <Count value={node.reviewCount} kind="due" />
+            <div data-no-drag className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:opacity-100 group-focus-within:opacity-100">
+              <IconButton label={tr("decks-study")} size="sm" disabled={due === 0} onClick={() => go({ name: "study", deckId: node.deckId })}>
+                <Play />
+              </IconButton>
+              <Menu>
+                <MenuTrigger asChild>
+                  <IconButton label={t("study.more")} size="sm">
+                    <MoreHorizontal />
+                  </IconButton>
+                </MenuTrigger>
+                <MenuContent>
+                  <DeckMenuItems node={node} origin="decks" Item={MenuItem} Separator={MenuSeparator} />
+                </MenuContent>
+              </Menu>
+            </div>
+          </div>
+        </CtxTrigger>
+        <CtxContent>
+          <DeckMenuItems node={node} origin="decks" Item={CtxItem} Separator={CtxSeparator} study />
+        </CtxContent>
+      </CtxRoot>
       {hasChildren && (
         <Expand open={!node.collapsed} className="divide-y divide-line-soft">
           {node.children.map((child) => (
@@ -162,10 +128,6 @@ function DeckRow({
               node={child}
               depth={depth + 1}
               currentId={currentId}
-              onRename={onRename}
-              onDelete={onDelete}
-              onMove={onMove}
-              onDescribe={onDescribe}
             />
           ))}
         </Expand>
@@ -202,73 +164,12 @@ function TopLevelDropZone() {
   );
 }
 
-function NameDialog({
-  open,
-  title,
-  initial,
-  confirm,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  title: string;
-  initial: string;
-  confirm: string;
-  onClose: () => void;
-  onSubmit: (name: string) => Promise<void>;
-}) {
-  const [value, setValue] = useState(initial);
-  const [busy, setBusy] = useState(false);
-  const submit = async () => {
-    if (!value.trim()) return;
-    setBusy(true);
-    try {
-      await onSubmit(value.trim());
-      onClose();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => !o && onClose()}
-      title={title}
-      footer={
-        <>
-          <Button onClick={onClose}>{t("common.cancel")}</Button>
-          <Button variant="primary" disabled={!value.trim() || busy} onClick={submit}>
-            {confirm}
-          </Button>
-        </>
-      }
-    >
-      <TextField
-        autoFocus
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        onFocus={(e) => e.target.select()}
-        aria-label={tr("decks-new-deck-name")}
-      />
-      <p className="mt-2 text-caption text-ink-3">
-        {t("decks.nameHint")}
-      </p>
-    </Dialog>
-  );
-}
-
 export function DecksScreen() {
   const { data: tree, isPending } = useDeckTree();
   const { data: studied } = useStudiedToday();
   const { data: current } = useCurrentDeck();
   const go = useNav((s) => s.go);
-  const [renaming, setRenaming] = useState<DeckTreeNode | null>(null);
   const [creating, setCreating] = useState(false);
-  const [moving, setMoving] = useState<DeckTreeNode | null>(null);
-  const [describing, setDescribing] = useState<bigint | null>(null);
 
   // F creates a filtered Deck, as in Anki's main window.
   useEffect(() => {
@@ -291,13 +192,6 @@ export function DecksScreen() {
   const decks = tree?.children ?? [];
   const isEmpty =
     !isPending && decks.reduce((n, d) => n + d.totalIncludingChildren, 0) === 0 && decks.length <= 1;
-
-  const remove = async (node: DeckTreeNode) => {
-    const result = await core.removeDecks({ dids: [node.deckId] }, { origin: "decks" });
-    toast(tr("browsing-cards-deleted", { count: result.count }), {
-      action: { label: tr("undo-undo"), onClick: () => void core.undo() },
-    });
-  };
 
   const createDeck = async (name: string) => {
     const deck = await core.newDeck();
@@ -384,10 +278,6 @@ export function DecksScreen() {
                 node={node}
                 depth={0}
                 currentId={current?.id}
-                onRename={setRenaming}
-                onDelete={(n) => void remove(n)}
-                onMove={setMoving}
-                onDescribe={(n) => setDescribing(n.deckId)}
               />
             ))}
           </div>
@@ -395,17 +285,6 @@ export function DecksScreen() {
         </section>
       </div>
 
-      <MoveDeckDialog key={moving ? String(moving.deckId) : "none"} deck={moving} root={tree} onClose={() => setMoving(null)} />
-      <DeckDescriptionDialog deckId={describing} onClose={() => setDescribing(null)} />
-      <NameDialog
-        key={renaming ? String(renaming.deckId) : "none"}
-        open={!!renaming}
-        title={tr("actions-rename-deck")}
-        initial={renaming?.name ?? ""}
-        confirm={tr("actions-rename")}
-        onClose={() => setRenaming(null)}
-        onSubmit={(name) => core.renameDeck({ deckId: renaming!.deckId, newName: name }, { origin: "decks" }).then(() => undefined)}
-      />
       <NameDialog
         open={creating}
         title={t("decks.create")}

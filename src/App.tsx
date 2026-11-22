@@ -38,6 +38,7 @@ import { WindowHost } from "@/shell/WindowHost";
 import { AnkiConnectHost } from "@/shell/AnkiConnectHost";
 import { ConfirmHost } from "@/components/confirm";
 import { CardInfoHost } from "@/screens/card-info";
+import { DeckDialogsHost } from "@/screens/decks/actions";
 import { FilteredHost } from "@/screens/filtered";
 import { pluginPanelTitle } from "@/lib/plugins/host";
 import { tp } from "@/lib/strings/plugins";
@@ -403,6 +404,7 @@ function Workspace() {
       </Suspense>
       <CardInfoHost />
       <FilteredHost />
+      <DeckDialogsHost />
       {/* A profile's plugins start afresh when another profile opens. */}
       <PluginHost key={profileId} />
     </div>
