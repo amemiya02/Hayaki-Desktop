@@ -1,10 +1,12 @@
 // Copyright: Hayaki contributors
 // License: GNU AGPL, version 3 or later; http://www.gnu.org/licenses/agpl.html
 
-import { BarChart3, ChevronRight, ChevronsUpDown, Filter, Layers, RefreshCw, Search, Settings, Users } from "lucide-react";
+import { BarChart3, ChevronRight, ChevronsUpDown, Filter, ImageMinus, ImagePlus, Layers, MoreHorizontal, RefreshCw, Search, Settings, Users } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
+import { Avatar, chooseAvatar } from "@/components/Avatar";
 import { cn, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, motionTokens } from "@/components/ui";
 import { withChord } from "@/lib/chord";
 import * as core from "@/lib/anki/generated/core";
@@ -16,7 +18,8 @@ import { getDeckTree, leafName, useDeckTree } from "@/lib/queries";
 import { useApp } from "@/lib/session-store";
 import { td } from "@/lib/strings/decks";
 import { deckDragHandlers, useDeckDrag, useDropTarget } from "@/screens/decks/drag";
-import { MoveDeckDialog } from "@/screens/decks/MoveDeckDialog";
+import { CtxContent, CtxItem, CtxRoot, CtxSeparator, CtxTrigger } from "@/screens/browse/menus";
+import { DeckMenuItems, removeDeck, useDeckDialogs } from "@/screens/decks/actions";
 import { runnable, usePlugins } from "@/lib/plugins/host";
 import { tp } from "@/lib/strings/plugins";
 import { panelIcon } from "@/screens/plugins/meta";
@@ -95,8 +98,10 @@ function TopLevelDrop() {
   );
 }
 
-function DeckBranch({ node, depth, route, onMove }: { node: DeckTreeNode; depth: number; route: Route; onMove: (node: DeckTreeNode) => void }) {
+function DeckBranch({ node, depth, route }: { node: DeckTreeNode; depth: number; route: Route }) {
   const go = useNav((s) => s.go);
+  const onMove = useDeckDialogs((s) => s.move);
+  const [menuOpen, setMenuOpen] = useState(false);
   const drop = useDropTarget(node.deckId);
   const due = node.newCount + node.learnCount + node.reviewCount;
   const active = route.name === "deck" && route.deckId === node.deckId;
@@ -110,52 +115,77 @@ function DeckBranch({ node, depth, route, onMove }: { node: DeckTreeNode; depth:
 
   return (
     <li>
-      <div
-        data-deck-drop={String(node.deckId)}
-        {...deckDragHandlers(node, getDeckTree)}
-        className={cn(
-          "group flex h-[30px] items-center rounded-[7px] pe-2 text-control transition-colors duration-[var(--dur-fast)]",
-          active ? "bg-accent-soft text-accent-ink" : "text-ink hover:bg-sidebar-hover",
-          drop.isSource && "opacity-45",
-          drop.valid && "bg-accent-soft shadow-ring-inset",
-          drop.over && !drop.valid && "cursor-not-allowed",
-        )}
-        style={{ paddingInlineStart: 4 + depth * 14 }}
-      >
-        {hasChildren ? (
-          <button
-            data-no-drag
-            aria-label={node.collapsed ? "Expand" : "Collapse"}
-            aria-expanded={!node.collapsed}
-            onClick={toggle}
-            className="grid size-5 shrink-0 place-items-center rounded-[5px] text-ink-3 hover:text-ink"
+      <CtxRoot>
+        <CtxTrigger asChild>
+          <div
+            data-deck-drop={String(node.deckId)}
+            {...deckDragHandlers(node, getDeckTree)}
+            className={cn(
+              "group flex h-[30px] items-center rounded-[7px] pe-2 text-control transition-colors duration-[var(--dur-fast)]",
+              active ? "bg-accent-soft text-accent-ink" : "text-ink hover:bg-sidebar-hover",
+              drop.isSource && "opacity-45",
+              drop.valid && "bg-accent-soft shadow-ring-inset",
+              drop.over && !drop.valid && "cursor-not-allowed",
+            )}
+            style={{ paddingInlineStart: 4 + depth * 14 }}
           >
-            <ChevronRight
-              className={cn("size-3.5 transition-transform duration-[var(--dur)] ease-out rtl:rotate-180", !node.collapsed && "rotate-90 rtl:rotate-90")}
-            />
-          </button>
-        ) : (
-          <span className="size-5 shrink-0" />
-        )}
-        <button
-          onClick={() => go({ name: "deck", deckId: node.deckId })}
-          onKeyDown={(e) => {
-            if (e.key.toLowerCase() === "m" && !e.ctrlKey && !e.metaKey && !e.altKey) onMove(node);
-          }}
-          className="flex h-full min-w-0 flex-1 items-center gap-2 ps-1 text-start"
-          title={node.name}
-        >
-          <span className={cn("min-w-0 flex-1 truncate", depth === 0 && "font-medium", node.filtered && "text-accent-ink")}>
-            {leafName(node.name)}
-          </span>
-          {due > 0 && <span className={cn("tabular text-caption", active ? "text-accent-ink" : "text-ink-2")}>{due}</span>}
-        </button>
-      </div>
+            {hasChildren ? (
+              <button
+                data-no-drag
+                aria-label={node.collapsed ? "Expand" : "Collapse"}
+                aria-expanded={!node.collapsed}
+                onClick={toggle}
+                className="grid size-5 shrink-0 place-items-center rounded-[5px] text-ink-3 hover:text-ink"
+              >
+                <ChevronRight
+                  className={cn("size-3.5 transition-transform duration-[var(--dur)] ease-out rtl:rotate-180", !node.collapsed && "rotate-90 rtl:rotate-90")}
+                />
+              </button>
+            ) : (
+              <span className="size-5 shrink-0" />
+            )}
+            <button
+              onClick={() => go({ name: "deck", deckId: node.deckId })}
+              onKeyDown={(e) => {
+                if (e.key.toLowerCase() === "m" && !e.ctrlKey && !e.metaKey && !e.altKey) onMove(node);
+                if (e.key === "Delete") void removeDeck(node, "sidebar");
+              }}
+              className="flex h-full min-w-0 flex-1 items-center gap-2 ps-1 text-start"
+              title={node.name}
+            >
+              <span className={cn("min-w-0 flex-1 truncate", depth === 0 && "font-medium", node.filtered && "text-accent-ink")}>
+                {leafName(node.name)}
+              </span>
+              {due > 0 && (
+                <span className={cn("tabular text-caption group-hover:hidden group-focus-within:hidden", menuOpen && "hidden", active ? "text-accent-ink" : "text-ink-2")}>{due}</span>
+              )}
+            </button>
+            <Menu onOpenChange={setMenuOpen}>
+              <MenuTrigger asChild>
+                <IconButton
+                  data-no-drag
+                  label={t("study.more")}
+                  size="sm"
+                  className="-me-1 hidden size-6 group-hover:inline-flex group-focus-within:inline-flex data-[state=open]:inline-flex"
+                >
+                  <MoreHorizontal />
+                </IconButton>
+              </MenuTrigger>
+              <MenuContent align="start">
+                <DeckMenuItems node={node} origin="sidebar" Item={MenuItem} Separator={MenuSeparator} study />
+              </MenuContent>
+            </Menu>
+          </div>
+        </CtxTrigger>
+        <CtxContent>
+          <DeckMenuItems node={node} origin="sidebar" Item={CtxItem} Separator={CtxSeparator} study />
+        </CtxContent>
+      </CtxRoot>
       {hasChildren && (
         <Expand open={!node.collapsed}>
           <ul>
             {node.children.map((child) => (
-              <DeckBranch key={String(child.deckId)} node={child} depth={depth + 1} route={route} onMove={onMove} />
+              <DeckBranch key={String(child.deckId)} node={child} depth={depth + 1} route={route} />
             ))}
           </ul>
         </Expand>
@@ -196,13 +226,24 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
   const route = useNav((s) => s.route);
   const go = useNav((s) => s.go);
   const { data: tree } = useDeckTree();
-  const [moving, setMoving] = useState<DeckTreeNode | null>(null);
   const profile = useApp((s) => s.profile);
   const switchProfile = useApp((s) => s.switchProfile);
   const decks = tree?.children ?? [];
   const regular = decks.filter((d) => !d.filtered);
   const filtered = decks.filter((d) => d.filtered);
   const name = profile?.name ?? "";
+  const avatar = useApp((s) => s.profiles.find((p) => p.id === s.profile?.id)?.avatar);
+  const setAvatar = useApp((s) => s.setAvatar);
+
+  const changeAvatar = async () => {
+    if (!profile) return;
+    try {
+      const picked = await chooseAvatar();
+      if (picked) await setAvatar(profile.id, picked);
+    } catch (error) {
+      toast.error(t("profile.avatarFailed"), { description: error instanceof Error ? error.message : String(error) });
+    }
+  };
 
   return (
     <nav aria-label="Hayaki" className="flex h-full flex-col bg-sidebar-surface">
@@ -219,7 +260,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
             <TopLevelDrop />
             <ul>
               {regular.map((node) => (
-                <DeckBranch key={String(node.deckId)} node={node} depth={0} route={route} onMove={setMoving} />
+                <DeckBranch key={String(node.deckId)} node={node} depth={0} route={route} />
               ))}
             </ul>
           </>
@@ -234,7 +275,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
             </GroupLabel>
             <ul>
               {filtered.map((node) => (
-                <DeckBranch key={String(node.deckId)} node={node} depth={0} route={route} onMove={setMoving} />
+                <DeckBranch key={String(node.deckId)} node={node} depth={0} route={route} />
               ))}
             </ul>
           </>
@@ -248,9 +289,7 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
               className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-[7px] px-1.5 text-start transition-colors duration-[var(--dur-fast)] hover:bg-sidebar-hover data-[state=open]:bg-sidebar-hover"
               aria-label={`${tr("profiles-profiles")}: ${name}`}
             >
-              <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-accent text-micro font-semibold text-on-accent">
-                {Array.from(name.trim())[0]?.toUpperCase() ?? "?"}
-              </span>
+              <Avatar name={name} src={avatar} className="size-6 text-micro" />
               <span className="min-w-0 flex-1 truncate text-control font-medium text-ink">{name}</span>
               <ChevronsUpDown className="size-3.5 shrink-0 text-ink-3" />
             </button>
@@ -260,6 +299,16 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
               <Users />
               {trLabel("qt-accel-switch-profile")}
             </MenuItem>
+            <MenuItem onSelect={() => void changeAvatar()}>
+              <ImagePlus />
+              {t("profile.setAvatar")}
+            </MenuItem>
+            {avatar && profile && (
+              <MenuItem onSelect={() => void setAvatar(profile.id, null).catch((error) => toast.error(String(error)))}>
+                <ImageMinus />
+                {t("profile.removeAvatar")}
+              </MenuItem>
+            )}
             <MenuSeparator />
             <MenuItem shortcut="Ctrl+P" onSelect={() => go({ name: "settings" })}>
               <Settings />
@@ -279,7 +328,6 @@ export function Sidebar({ onSync, syncing }: { onSync: () => void; syncing: bool
           <Settings />
         </IconButton>
       </div>
-      <MoveDeckDialog key={moving ? String(moving.deckId) : "none"} deck={moving} root={tree} onClose={() => setMoving(null)} />
     </nav>
   );
 }

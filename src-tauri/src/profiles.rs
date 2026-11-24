@@ -34,6 +34,9 @@ pub struct ProfileMeta {
     pub id: String,
     pub name: String,
     pub created: i64,
+    /// A small picture chosen for the profile, as a `data:image/...` URL.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug)]
@@ -179,10 +182,7 @@ impl Held<'_> {
 }
 
 fn data_root(app: &AppHandle) -> Result<PathBuf, String> {
-    let root = app
-        .path()
-        .app_data_dir()
-        .map_err(|err| err.to_string())?;
+    let root = crate::location::root(app)?;
     fs::create_dir_all(root.join("profiles")).map_err(|err| err.to_string())?;
     Ok(root)
 }
@@ -310,6 +310,7 @@ fn create_profile(root: &Path, name: &str) -> Result<ProfileMeta, String> {
             id,
             name,
             created: now_secs(),
+            avatar: None,
         };
         file.profiles.push(meta.clone());
         Ok(meta)
@@ -334,6 +335,31 @@ pub fn profile_rename(app: AppHandle, session: State<'_, Session>, id: String, n
             current.name = name;
         }
     }
+    state(&app, &session)
+}
+
+/// The interface scales the picture down before it gets here; this only keeps
+/// `profiles.json` from growing without bound.
+const AVATAR_MAX: usize = 256 * 1024;
+
+fn valid_avatar(avatar: &str) -> bool {
+    avatar.len() <= AVATAR_MAX
+        && ["png", "jpeg", "webp"]
+            .iter()
+            .any(|kind| avatar.starts_with(&format!("data:image/{kind};base64,")))
+}
+
+/// Sets the profile's picture; none goes back to its initial.
+#[tauri::command]
+pub fn profile_set_avatar(app: AppHandle, session: State<'_, Session>, id: String, avatar: Option<String>) -> Result<ProfilesState, String> {
+    if avatar.as_deref().is_some_and(|avatar| !valid_avatar(avatar)) {
+        return Err("invalid-avatar".into());
+    }
+    update_file(&data_root(&app)?, |file| {
+        let profile = file.profiles.iter_mut().find(|p| p.id == id).ok_or("not-found")?;
+        profile.avatar = avatar;
+        Ok(())
+    })?;
     state(&app, &session)
 }
 

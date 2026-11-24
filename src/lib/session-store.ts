@@ -12,6 +12,7 @@ import {
   createProfile,
   deleteProfile,
   renameProfile,
+  setProfileAvatar,
   listProfiles,
   openProfile,
   type AppInfo,
@@ -41,6 +42,8 @@ interface AppState {
   /** Creates a profile and opens it. Throws `name-exists` for a taken name. */
   createAndOpen(name: string): Promise<void>;
   rename(id: string, name: string): Promise<void>;
+  /** Sets a profile's picture; null goes back to its initial. */
+  setAvatar(id: string, avatar: string | null): Promise<void>;
   remove(id: string): Promise<void>;
 }
 
@@ -129,6 +132,11 @@ export const useApp = create<AppState>((set, get) => {
     async rename(id, name) {
       const state = await renameProfile(id, name);
       set({ profiles: state.profiles, profile: state.current ?? get().profile });
+    },
+
+    async setAvatar(id, avatar) {
+      const state = await setProfileAvatar(id, avatar);
+      set({ profiles: state.profiles });
     },
 
     async remove(id) {
