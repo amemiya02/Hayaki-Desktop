@@ -20,6 +20,7 @@ import { AnkiPreferencesSections } from "@/screens/preferences";
 import { BackupsSection } from "@/shell/Backups";
 import { SyncPreferencesSection } from "@/shell/Sync";
 import { AnkiConnectSection } from "@/screens/preferences/AnkiConnectSection";
+import { RwkvSection } from "@/screens/preferences/RwkvSection";
 import { displayChord } from "@/shell/shortcuts";
 import { WindowSettings } from "@/shell/WindowSettings";
 
@@ -102,6 +103,7 @@ export function SettingsScreen() {
         <WindowSettings />
 
         <AnkiPreferencesSections />
+        <RwkvSection />
         <BackupsSection />
         <SyncPreferencesSection />
         <AnkiConnectSection />

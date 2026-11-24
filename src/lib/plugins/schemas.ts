@@ -32,6 +32,7 @@ import * as search from "../anki/proto/anki/search_pb";
 import * as stats from "../anki/proto/anki/stats_pb";
 import * as sync from "../anki/proto/anki/sync_pb";
 import * as tags from "../anki/proto/anki/tags_pb";
+import * as zz_hayaki from "../anki/proto/anki/zz_hayaki_pb";
 
 export interface MethodSchemas {
   input: DescMessage;
@@ -41,6 +42,7 @@ export interface MethodSchemas {
 const modules: Record<string, unknown>[] = [
   ankidroid, ankihub, ankiweb, card_rendering, cards, collection, config, deck_config, decks, frontend, generic, github,
   i18n, image_occlusion, import_export, links, media, notes, notetypes, scheduler, search, stats, sync, tags,
+  zz_hayaki,
 ];
 
 let table: Map<string, MethodSchemas> | null = null;

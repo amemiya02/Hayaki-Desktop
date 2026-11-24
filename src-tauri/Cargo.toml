@@ -1,7 +1,8 @@
 # Hayaki for desktop: the Tauri shell around upstream Anki's Rust core.
-# Upstream Anki lives unpatched in ../vendor/anki and is used through path
-# dependencies. Cargo.lock was seeded from upstream's lock file, so the core
-# builds with the dependency versions upstream tested.
+# ../vendor/anki is upstream Anki plus Hayaki's RWKV queue patch
+# (docs/adr/0005-opt-in-rwkv-scheduling.md), used through path dependencies.
+# Cargo.lock was seeded from upstream's lock file, so the core builds with the
+# dependency versions upstream tested.
 
 [workspace]
 members = ["codegen"]

@@ -18,6 +18,7 @@ import {
   type OpenProfile,
   type ProfileMeta,
 } from "./profiles";
+import { prepareRwkvIfEnabled } from "./rwkv";
 import { resetQueries } from "./queries";
 import { useSync } from "./sync";
 
@@ -92,6 +93,9 @@ export const useApp = create<AppState>((set, get) => {
         const profile = await openProfile(id);
         resetQueries();
         set({ profile, status: "ready", error: null, firstRun: false });
+        // RWKV scheduling prepares in the background; study uses the upstream
+        // queue until it is ready, so a failure here only shows in Settings.
+        prepareRwkvIfEnabled().catch(() => undefined);
       } catch (error) {
         // No profile is loaded now (the shell may have closed the old one), so
         // opening any profile, the same one included, starts afresh.
