@@ -3,18 +3,18 @@
 
 /**
  * RWKV scheduling (ADR 0005, Android ADR-0009). The switch is the collection
- * config key `hayakiRwkvScheduling`, so it syncs. The core keeps the model
+ * config key `hayakiRwkvScheduling` and the model `hayakiRwkvModel`, so both sync. The core keeps the model
  * state and builds the review queue; the app only switches it, starts
  * preparation, and shows the status.
  */
 import * as core from "@/lib/anki/generated/core";
-import { RwkvStatusResponse_State, type RwkvStatusResponse } from "@/lib/anki/proto/anki/zz_hayaki_pb";
+import { RwkvModel, RwkvStatusResponse_State, type RwkvStatusResponse } from "@/lib/anki/proto/anki/zz_hayaki_pb";
 
 import { appInfo } from "./profiles";
 
 export const RWKV_KEY = "hayakiRwkvScheduling";
 export const rwkvQueryKey = ["rwkv-status"] as const;
-export { RwkvStatusResponse_State as RwkvState, type RwkvStatusResponse };
+export { RwkvModel, RwkvStatusResponse_State as RwkvState, type RwkvStatusResponse };
 
 /** The weights live in the app data folder, shared by every profile. */
 async function weightsDir(): Promise<string> {
@@ -36,6 +36,12 @@ export async function setRwkvEnabled(on: boolean): Promise<void> {
     undoable: false,
   });
   if (on) await prepareRwkv();
+}
+
+/** Picks the model (the synced key `hayakiRwkvModel`); with the switch on, the new one is prepared. */
+export async function setRwkvModel(model: RwkvModel): Promise<void> {
+  const status = await core.setRwkvModel({ model });
+  if (status.enabled) await prepareRwkv();
 }
 
 /**

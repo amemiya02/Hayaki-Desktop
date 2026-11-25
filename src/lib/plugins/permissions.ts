@@ -303,9 +303,10 @@ export const CORE_ACCESS = {
   removeNoteTags: "write",
   findAndReplaceTag: "write",
   completeTag: "read",
-  // Hayaki: RWKV scheduling. Preparing downloads the model, so plugins may only read the status.
+  // Hayaki: RWKV scheduling. Preparing downloads the model and choosing one changes a synced setting, so plugins may only read the status.
   rwkvStatus: "read",
   prepareRwkv: "deny",
+  setRwkvModel: "deny",
 } as const satisfies Record<CoreMethod, Access>;
 
 /** Unknown names are denied, so a method missing from the table is never callable. */

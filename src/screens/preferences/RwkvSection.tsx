@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { SettingsNote, SettingsRow, SettingsSection } from "@/components/settings";
 import { Button, cn, Spinner, Switch } from "@/components/ui";
-import { getRwkvStatus, prepareRwkv, RwkvState, rwkvQueryKey, setRwkvEnabled, type RwkvStatusResponse } from "@/lib/rwkv";
+import { getRwkvStatus, prepareRwkv, RwkvModel, RwkvState, rwkvQueryKey, setRwkvEnabled, setRwkvModel, type RwkvStatusResponse } from "@/lib/rwkv";
 import { trw } from "@/lib/strings/rwkv";
 
 function statusText(status: RwkvStatusResponse): string {
@@ -40,6 +40,61 @@ function StatusLine({ status, onRetry }: { status: RwkvStatusResponse; onRetry: 
   );
 }
 
+const MODEL_OPTIONS = [
+  { model: RwkvModel.BIG, label: "modelBig", hint: "modelBigHint" },
+  { model: RwkvModel.SMALL, label: "modelSmall", hint: "modelSmallHint" },
+  { model: RwkvModel.TINY, label: "modelTiny", hint: "modelTinyHint" },
+] as const;
+
+function ModelPicker({ value, onChange }: { value: RwkvModel; onChange: (model: RwkvModel) => void }) {
+  return (
+    <div className="px-4 py-2.5">
+      <div id="rwkv-model-title" className="text-body text-ink">
+        {trw("modelTitle")}
+      </div>
+      <div role="radiogroup" aria-labelledby="rwkv-model-title" className="mt-2 flex flex-col gap-1.5">
+        {MODEL_OPTIONS.map((option, index) => {
+          const selected = value === option.model;
+          return (
+            <button
+              key={option.model}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => onChange(option.model)}
+              onKeyDown={(e) => {
+                const delta = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : e.key === "ArrowUp" || e.key === "ArrowLeft" ? -1 : 0;
+                if (!delta) return;
+                e.preventDefault();
+                // Arrows only move focus: choosing a model can start a download and a full replay.
+                const next = (index + delta + MODEL_OPTIONS.length) % MODEL_OPTIONS.length;
+                e.currentTarget.parentElement?.querySelectorAll("button")[next]?.focus();
+              }}
+              className={cn(
+                "flex items-start gap-3 rounded-[10px] border px-3 py-2 text-start outline-none transition-colors duration-[var(--dur-fast)]",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                selected ? "border-accent bg-surface-2" : "border-line hover:bg-surface-2",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn("mt-[3px] grid size-3.5 shrink-0 place-items-center rounded-full border", selected ? "border-accent" : "border-ink-3")}
+              >
+                {selected && <span className="size-2 rounded-full bg-accent" />}
+              </span>
+              <span className="min-w-0">
+                <span className={cn("block text-body", selected ? "font-semibold text-ink" : "text-ink")}>{trw(option.label)}</span>
+                <span className="mt-0.5 block text-pretty text-caption text-ink-3">{trw(option.hint)}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function RwkvSection() {
   const client = useQueryClient();
   const { data: status, isPending, isError, refetch } = useQuery({
@@ -49,10 +104,10 @@ export function RwkvSection() {
     refetchInterval: (query) => (query.state.data?.enabled && query.state.data.state !== RwkvState.READY && query.state.data.state !== RwkvState.FAILED ? 1000 : false),
   });
 
-  const run = (action: Promise<unknown>) => {
+  const run = (action: Promise<unknown>, errorKey: "saveError" | "modelSaveError" = "saveError") => {
     action
       .catch((error: unknown) => {
-        toast.error(trw("saveError"), { description: error instanceof Error ? error.message : String(error) });
+        toast.error(trw(errorKey), { description: error instanceof Error ? error.message : String(error) });
       })
       .finally(() => void client.invalidateQueries({ queryKey: rwkvQueryKey }));
   };
@@ -86,8 +141,8 @@ export function RwkvSection() {
       <div className="px-4 pb-3">
         <StatusLine status={status} onRetry={() => run(prepareRwkv())} />
       </div>
-      <SettingsNote>{trw("syncHint")}</SettingsNote>
-      <SettingsNote>{trw("weightsHint")}</SettingsNote>
+      <ModelPicker value={status.model} onChange={(model) => model !== status.model && run(setRwkvModel(model), "modelSaveError")} />
+      <SettingsNote>{trw("modelHint")}</SettingsNote>
     </SettingsSection>
   );
 }
