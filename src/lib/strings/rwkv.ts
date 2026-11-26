@@ -28,6 +28,8 @@ export const trw = makeStrings({
     modelSaveError: "The RWKV model could not be changed.",
     loadError: "The RWKV status could not be loaded.",
     saveError: "RWKV scheduling could not be changed.",
+    dailyList: "Keep today's list",
+    dailyListHint: "Choose the day's reviews once, at your first study. Cards you finish don't come back until tomorrow.",
   },
   zh: {
     title: "RWKV 排程",
@@ -52,6 +54,8 @@ export const trw = makeStrings({
     modelSaveError: "无法更改 RWKV 模型。",
     loadError: "无法读取 RWKV 状态。",
     saveError: "无法更改 RWKV 排程。",
+    dailyList: "固定每天的复习名单",
+    dailyListHint: "每天第一次学习时定下当天要复习的卡，复习完的卡当天不再出现。",
   },
   ja: {
     title: "RWKV スケジュール",
@@ -76,5 +80,7 @@ export const trw = makeStrings({
     modelSaveError: "RWKV モデルを変更できません。",
     loadError: "RWKV の状態を読み込めません。",
     saveError: "RWKV スケジュールを変更できません。",
+    dailyList: "その日の復習リストを固定",
+    dailyListHint: "その日の復習は最初の学習時に一度だけ決めます。終えたカードは翌日まで戻ってきません。",
   },
 });

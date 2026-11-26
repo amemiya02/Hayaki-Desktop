@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { SettingsNote, SettingsRow, SettingsSection } from "@/components/settings";
 import { Button, cn, Spinner, Switch } from "@/components/ui";
-import { getRwkvStatus, prepareRwkv, RwkvModel, RwkvState, rwkvQueryKey, setRwkvEnabled, setRwkvModel, type RwkvStatusResponse } from "@/lib/rwkv";
+import { getRwkvDailyList, getRwkvStatus, prepareRwkv, RwkvModel, RwkvState, rwkvQueryKey, rwkvDailyListQueryKey, setRwkvDailyList, setRwkvEnabled, setRwkvModel, type RwkvStatusResponse } from "@/lib/rwkv";
 import { trw } from "@/lib/strings/rwkv";
 
 function statusText(status: RwkvStatusResponse): string {
@@ -104,12 +104,17 @@ export function RwkvSection() {
     refetchInterval: (query) => (query.state.data?.enabled && query.state.data.state !== RwkvState.READY && query.state.data.state !== RwkvState.FAILED ? 1000 : false),
   });
 
+  const { data: dailyList = false } = useQuery({ queryKey: rwkvDailyListQueryKey, queryFn: getRwkvDailyList });
+
   const run = (action: Promise<unknown>, errorKey: "saveError" | "modelSaveError" = "saveError") => {
     action
       .catch((error: unknown) => {
         toast.error(trw(errorKey), { description: error instanceof Error ? error.message : String(error) });
       })
-      .finally(() => void client.invalidateQueries({ queryKey: rwkvQueryKey }));
+      .finally(() => {
+        void client.invalidateQueries({ queryKey: rwkvQueryKey });
+        void client.invalidateQueries({ queryKey: rwkvDailyListQueryKey });
+      });
   };
 
   if (isPending) {
@@ -143,6 +148,11 @@ export function RwkvSection() {
       </div>
       <ModelPicker value={status.model} onChange={(model) => model !== status.model && run(setRwkvModel(model), "modelSaveError")} />
       <SettingsNote>{trw("modelHint")}</SettingsNote>
+      {status.enabled && (
+        <SettingsRow label={trw("dailyList")} hint={trw("dailyListHint")}>
+          <Switch label={trw("dailyList")} checked={dailyList} onChange={(on) => run(setRwkvDailyList(on))} />
+        </SettingsRow>
+      )}
     </SettingsSection>
   );
 }

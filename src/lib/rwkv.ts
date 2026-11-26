@@ -13,7 +13,10 @@ import { RwkvModel, RwkvStatusResponse_State, type RwkvStatusResponse } from "@/
 import { appInfo } from "./profiles";
 
 export const RWKV_KEY = "hayakiRwkvScheduling";
+/** Synced boolean key: RWKV fixes the day's review list at the first study of the day. Absent means false. */
+export const RWKV_DAILY_LIST_KEY = "hayakiRwkvDailyList";
 export const rwkvQueryKey = ["rwkv-status"] as const;
+export const rwkvDailyListQueryKey = ["rwkv-daily-list"] as const;
 export { RwkvModel, RwkvStatusResponse_State as RwkvState, type RwkvStatusResponse };
 
 /** The weights live in the app data folder, shared by every profile. */
@@ -36,6 +39,25 @@ export async function setRwkvEnabled(on: boolean): Promise<void> {
     undoable: false,
   });
   if (on) await prepareRwkv();
+}
+
+/** Reads {@link RWKV_DAILY_LIST_KEY}; a key that was never set reads as false. */
+export async function getRwkvDailyList(): Promise<boolean> {
+  try {
+    const out = await core.getConfigJson({ val: RWKV_DAILY_LIST_KEY }, { quiet: true });
+    return JSON.parse(new TextDecoder().decode(out.json)) === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Switches the fixed daily list (a synced key); the core reads it at the next queue build. */
+export async function setRwkvDailyList(on: boolean): Promise<void> {
+  await core.setConfigJson({
+    key: RWKV_DAILY_LIST_KEY,
+    valueJson: new TextEncoder().encode(JSON.stringify(on)),
+    undoable: false,
+  });
 }
 
 /** Picks the model (the synced key `hayakiRwkvModel`); with the switch on, the new one is prepared. */
