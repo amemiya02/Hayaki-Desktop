@@ -23,7 +23,7 @@ prost-reflect = "0.14.7"
 
 [package]
 name = "hayaki"
-version = "0.3.2"
+version = "0.3.3"
 description = "Hayaki for desktop"
 edition.workspace = true
 license.workspace = true
