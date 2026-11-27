@@ -165,7 +165,7 @@ function TopLevelDropZone() {
 }
 
 export function DecksScreen() {
-  const { data: tree, isPending } = useDeckTree();
+  const { data: tree, isPending, error, refetch } = useDeckTree();
   const { data: studied } = useStudiedToday();
   const { data: current } = useCurrentDeck();
   const go = useNav((s) => s.go);
@@ -190,14 +190,23 @@ export function DecksScreen() {
   const hasWork = (n?: DeckTreeNode) => !!n && n.newCount + n.learnCount + n.reviewCount > 0;
   const studyTarget = hasWork(currentNode) ? currentNode : (tree?.children ?? []).find(hasWork);
   const decks = tree?.children ?? [];
-  const isEmpty =
-    !isPending && decks.reduce((n, d) => n + d.totalIncludingChildren, 0) === 0 && decks.length <= 1;
+  const isEmpty = decks.reduce((n, d) => n + d.totalIncludingChildren, 0) === 0 && decks.length <= 1;
 
   const createDeck = async (name: string) => {
     const deck = await core.newDeck();
     deck.name = name;
     await core.addDeck(deck, { origin: "decks" });
   };
+
+  if (error) {
+    return (
+      <div role="alert" className="flex items-center gap-3 p-8">
+        {error.message}
+        <Button onClick={() => void refetch()}>{t("common.retry")}</Button>
+      </div>
+    );
+  }
+  if (isPending) return <p role="status" className="p-8">{t("common.loading")}</p>;
 
   if (isEmpty) {
     return (

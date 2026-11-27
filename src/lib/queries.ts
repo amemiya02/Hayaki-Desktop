@@ -6,6 +6,7 @@ import { QueryClient, useQuery } from "@tanstack/react-query";
 
 import * as core from "./anki/generated/core";
 import type { DeckTreeNode } from "./anki/proto/anki/decks_pb";
+import { readDueDeckTree } from "./rwkv";
 import { onCollectionChange } from "./anki/transport";
 
 export const queryClient = new QueryClient({
@@ -34,7 +35,7 @@ export const keys = {
 export function useDeckTree() {
   return useQuery({
     queryKey: keys.deckTree,
-    queryFn: () => core.deckTree({ now: BigInt(Math.floor(Date.now() / 1000)) }),
+    queryFn: ({ signal }) => readDueDeckTree(signal),
   });
 }
 

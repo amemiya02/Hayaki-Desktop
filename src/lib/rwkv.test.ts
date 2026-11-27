@@ -3,11 +3,13 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getConfigJson, setConfigJson } = vi.hoisted(() => ({ getConfigJson: vi.fn(), setConfigJson: vi.fn() }));
-vi.mock("@/lib/anki/generated/core", () => ({ getConfigJson, setConfigJson }));
+const { getConfigJson, setConfigJson, rwkvStatus, deckTree } = vi.hoisted(() => ({
+  getConfigJson: vi.fn(), setConfigJson: vi.fn(), rwkvStatus: vi.fn(), deckTree: vi.fn(),
+}));
+vi.mock("@/lib/anki/generated/core", () => ({ getConfigJson, setConfigJson, rwkvStatus, deckTree }));
 vi.mock("./profiles", () => ({ appInfo: vi.fn() }));
 
-import { getRwkvDailyList, RWKV_DAILY_LIST_KEY, setRwkvDailyList } from "./rwkv";
+import { getRwkvDailyList, readDueDeckTree, RwkvState, RWKV_DAILY_LIST_KEY, setRwkvDailyList } from "./rwkv";
 
 const json = (v: unknown) => ({ json: new TextEncoder().encode(JSON.stringify(v)) });
 
@@ -38,4 +40,22 @@ describe("daily list key", () => {
     expect(arg.undoable).toBe(false);
     expect(new TextDecoder().decode(arg.valueJson)).toBe("true");
   });
+});
+
+it("waits for restoration and discards a count that triggered another replay", async () => {
+  vi.useFakeTimers();
+  try {
+    for (const state of [RwkvState.PREPARING, RwkvState.READY, RwkvState.PREPARING, RwkvState.READY, RwkvState.READY]) {
+      rwkvStatus.mockResolvedValueOnce({ enabled: true, state });
+    }
+    deckTree.mockResolvedValueOnce({ reviewCount: 5709 }).mockResolvedValueOnce({ reviewCount: 2000 });
+    const tree = readDueDeckTree(new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(deckTree).not.toHaveBeenCalled();
+    await vi.runAllTimersAsync();
+    expect(await tree).toEqual({ reviewCount: 2000 });
+    expect(deckTree).toHaveBeenCalledTimes(2);
+  } finally {
+    vi.useRealTimers();
+  }
 });

@@ -66,13 +66,30 @@ export async function setRwkvModel(model: RwkvModel): Promise<void> {
   if (status.enabled) await prepareRwkv();
 }
 
-/**
- * Called after a profile opens: a collection with the switch on starts
- * preparing at once, so the first study session can use RWKV.
- */
-export async function prepareRwkvIfEnabled(): Promise<void> {
-  const status = await getRwkvStatus();
-  if (status.enabled && status.state !== RwkvStatusResponse_State.READY && status.state !== RwkvStatusResponse_State.PREPARING) {
-    await prepareRwkv();
+/** The first counted tree can trigger another replay after a sync. */
+export async function readDueDeckTree(signal: AbortSignal) {
+  let status = await getRwkvStatus();
+  if (status.enabled && status.state === RwkvStatusResponse_State.FAILED) {
+    signal.throwIfAborted();
+    status = await prepareRwkv();
+  }
+  let pollDelayMs = 16;
+  for (;;) {
+    signal.throwIfAborted();
+    if (!status.enabled || status.state === RwkvStatusResponse_State.READY) {
+      const tree = await core.deckTree({ now: BigInt(Math.floor(Date.now() / 1000)) });
+      if (!status.enabled) return tree;
+      status = await getRwkvStatus();
+      if (status.enabled && status.state === RwkvStatusResponse_State.READY) return tree;
+    } else if (status.state === RwkvStatusResponse_State.NOT_PREPARED) {
+      status = await prepareRwkv();
+    } else if (status.state === RwkvStatusResponse_State.PREPARING) {
+      await new Promise<void>((resolve) => setTimeout(resolve, pollDelayMs));
+      pollDelayMs = Math.min(pollDelayMs * 2, 250);
+      signal.throwIfAborted();
+      status = await getRwkvStatus();
+    } else {
+      throw new Error(status.error);
+    }
   }
 }
